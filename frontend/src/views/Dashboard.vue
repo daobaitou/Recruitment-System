@@ -24,7 +24,7 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <h3>总资金</h3>
-            <p class="stat-number">¥{{ totalAmount }}</p>
+            <p class="stat-number">{{ formatCurrency(totalAmount) }}</p>
             <p class="stat-desc">所有招聘平台资金总和</p>
           </div>
         </el-card>
@@ -66,16 +66,7 @@
               <span>资金分布</span>
             </div>
           </template>
-          <div class="chart-container">
-            <div class="placeholder-chart">
-              [资金分布图表占位]
-              <p>前程无忧: 30%</p>
-              <p>智联招聘: 20%</p>
-              <p>Boss直聘: 25%</p>
-              <p>猎聘网: 15%</p>
-              <p>其他: 10%</p>
-            </div>
-          </div>
+          <div class="chart-container" ref="fundChartRef" style="width: 100%; height: 300px;"></div>
         </el-card>
       </el-col>
       <el-col :span="12">
@@ -85,16 +76,7 @@
               <span>候选人状态</span>
             </div>
           </template>
-          <div class="chart-container">
-            <div class="placeholder-chart">
-              [候选人状态图表占位]
-              <p>邀约: {{ candidateStats.invite }}</p>
-              <p>一面: {{ candidateStats.firstInterview }}</p>
-              <p>二面: {{ candidateStats.secondInterview }}</p>
-              <p>Offer: {{ candidateStats.offer }}</p>
-              <p>入职: {{ candidateStats.entry }}</p>
-            </div>
-          </div>
+          <div class="chart-container" ref="candidateChartRef" style="width: 100%; height: 300px;"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -102,43 +84,59 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useFundStore } from '@/stores/fund'
 import { useCandidateStore } from '@/stores/candidate'
+import * as echarts from 'echarts'
 
+// 路由
 const router = useRouter()
+
+// Store
 const userStore = useUserStore()
 const fundStore = useFundStore()
 const candidateStore = useCandidateStore()
 
-// 当前日期
-const currentDate = new Date().toLocaleDateString('zh-CN', {
+// 图表引用
+const fundChartRef = ref(null)
+const candidateChartRef = ref(null)
+
+// 图表实例
+let fundChart = null
+let candidateChart = null
+
+// 响应式数据
+const loading = ref(false)
+const currentDate = ref(new Date().toLocaleDateString('zh-CN', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
   weekday: 'long'
-})
+}))
 
-// 加载状态
-const loading = ref(false)
-
-// 获取资金列表
-const funds = computed(() => fundStore.funds)
-
-// 获取活跃资金
-const activeFunds = computed(() => fundStore.activeFunds)
-
-// 获取候选人列表
+// 计算属性
 const candidates = computed(() => candidateStore.candidates)
 
-// 获取待处理候选人
 const pendingCandidates = computed(() => {
-  return candidateStore.candidates.filter(candidate => candidate.status === 'pending')
+  return candidateStore.candidates.filter(candidate => 
+    candidate.status === 'pending' || !candidate.status
+  )
 })
 
-// 候选人状态统计
+const activeFunds = computed(() => {
+  return fundStore.funds.filter(fund => fund.status === 'using')
+})
+
+// 修复总金额计算，确保只计算数值类型
+const totalAmount = computed(() => {
+  return fundStore.funds.reduce((total, fund) => {
+    const amount = parseFloat(fund.amount) || 0
+    return total + amount
+  }, 0)
+})
+
 const candidateStats = computed(() => {
   const stats = {
     invite: 0,
@@ -171,10 +169,108 @@ const candidateStats = computed(() => {
   return stats
 })
 
-// 总金额计算
-const totalAmount = computed(() => {
-  return fundStore.funds.reduce((total, fund) => total + fund.amount, 0)
-})
+// 格式化货币显示
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    minimumFractionDigits: 2
+  }).format(amount)
+}
+
+// 初始化资金分布图表
+const initFundChart = () => {
+  if (fundChartRef.value) {
+    fundChart = echarts.init(fundChartRef.value)
+    
+    // 统计各平台资金分布
+    const platformMap = {}
+    fundStore.funds.forEach(fund => {
+      const platform = fund.platform || '未知平台'
+      const amount = parseFloat(fund.amount) || 0
+      platformMap[platform] = (platformMap[platform] || 0) + amount
+    })
+    
+    const platforms = Object.keys(platformMap)
+    const amounts = Object.values(platformMap)
+    
+    const option = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left'
+      },
+      series: [
+        {
+          name: '资金分布',
+          type: 'pie',
+          radius: '50%',
+          data: platforms.map((platform, index) => ({
+            value: amounts[index],
+            name: platform
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    }
+    
+    fundChart.setOption(option)
+  }
+}
+
+// 初始化候选人状态图表
+const initCandidateChart = () => {
+  if (candidateChartRef.value) {
+    candidateChart = echarts.init(candidateChartRef.value)
+    
+    const stats = candidateStats.value
+    const categories = ['邀约', '一面', '二面', 'Offer', '入职']
+    const values = [
+      stats.invite,
+      stats.firstInterview,
+      stats.secondInterview,
+      stats.offer,
+      stats.entry
+    ]
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: categories
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          name: '候选人数量',
+          type: 'bar',
+          data: values,
+          itemStyle: {
+            color: '#409EFF'
+          }
+        }
+      ]
+    }
+    
+    candidateChart.setOption(option)
+  }
+}
 
 // 加载数据
 const loadData = async () => {
@@ -193,7 +289,27 @@ const loadData = async () => {
 
 // 页面加载时获取数据
 onMounted(() => {
-  loadData()
+  loadData().then(() => {
+    nextTick(() => {
+      initFundChart()
+      initCandidateChart()
+    })
+  })
+})
+
+// 监听数据变化，更新图表
+watch([() => fundStore.funds, () => candidateStore.candidates], () => {
+  nextTick(() => {
+    if (fundChart) {
+      fundChart.dispose()
+      initFundChart()
+    }
+    
+    if (candidateChart) {
+      candidateChart.dispose()
+      initCandidateChart()
+    }
+  })
 })
 
 // 编辑个人信息
@@ -225,7 +341,7 @@ const handleEditProfile = () => {
 }
 
 .welcome-content p {
-  margin: 10px 0;
+  margin: 5px 0;
   color: #666;
 }
 
@@ -256,16 +372,13 @@ const handleEditProfile = () => {
   font-size: 12px;
 }
 
-.charts-row {
-  margin-bottom: 20px;
-}
-
 .chart-card {
-  height: 300px;
+  height: 350px;
 }
 
-.fund-card, .candidate-card {
-  margin-top: 20px;
+.chart-container {
+  width: 100%;
+  height: calc(100% - 20px);
 }
 
 .table-header {
