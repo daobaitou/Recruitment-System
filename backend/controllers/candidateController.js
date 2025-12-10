@@ -202,7 +202,7 @@ exports.updateCandidate = (req, res) => {
   
   // 只有当fundId明确提供时才更新，允许设置为null
   if (req.body.hasOwnProperty('fundId')) {
-    candidate.fund_id = fundId;
+    candidate.fund_id = fundId !== undefined ? fundId : null;
   }
   if (name !== undefined) candidate.name = name;
   if (position !== undefined) candidate.position = position;
@@ -252,6 +252,7 @@ exports.updateCandidate = (req, res) => {
     const formattedCandidate = {
       id: updatedCandidate.id,
       fundId: updatedCandidate.fund_id,
+      fundPlatform: updatedCandidate.fund_platform || '',
       name: updatedCandidate.name,
       position: updatedCandidate.position,
       phone: updatedCandidate.phone,
@@ -263,6 +264,7 @@ exports.updateCandidate = (req, res) => {
       process: updatedCandidate.process,
       status: updatedCandidate.status,
       interviewStatus: updatedCandidate.interview_status,
+      statusText: updatedCandidate.status_text || '待约',
       firstInterviewDate: updatedCandidate.first_interview_date,
       firstInterviewTime: updatedCandidate.first_interview_time,
       firstInterviewLocation: updatedCandidate.first_interview_location,

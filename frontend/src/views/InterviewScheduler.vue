@@ -221,24 +221,24 @@ const submitForm = () => {
         
         // 更新候选人信息
         const updateData = {
-          fund_id: candidate.value.fundId, // 保留原有的资金来源
+          fundId: candidate.value.fundId, // 保留原有的资金来源
           name: candidate.value.name,
           position: candidate.value.position,
           process: form.round,
           status: 'pending', // 添加默认状态
-          interview_status: 'unconfirmed', // 安排面试后状态改为"未确认"
+          interviewStatus: 'unconfirmed', // 安排面试后状态改为"未确认"
           // 根据面试轮次更新对应的面试信息字段
           ...(form.round === 'first-interview' && {
-            first_interview_date: form.date,
-            first_interview_time: form.time,
-            first_interview_location: form.location
+            firstInterviewDate: form.date,
+            firstInterviewTime: form.time,
+            firstInterviewLocation: form.location
           }),
           ...(form.round === 'second-interview' && {
-            second_interview_date: form.date,
-            second_interview_time: form.time,
-            second_interview_location: form.location
+            secondInterviewDate: form.date,
+            secondInterviewTime: form.time,
+            secondInterviewLocation: form.location
           }),
-          schedule_remarks: form.description // 安排面试时的备注
+          scheduleRemarks: form.description // 安排面试时的备注
         }
         
         await candidateStore.updateCandidate(form.candidateId, updateData)
