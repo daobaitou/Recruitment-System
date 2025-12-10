@@ -10,13 +10,33 @@
             <el-tag :type="getInterviewStageType(candidate.process)" class="stage-tag">
               {{ getInterviewStageText(candidate.process) }}
             </el-tag>
-            <el-tag :type="getStatusTagType(candidate.status)" class="status-tag">
-              {{ candidate.statusText }}
+            <el-tag :type="getStatusTagType(candidate.interviewStatus)" class="status-tag">
+              {{ getInterviewStatusText(candidate.interviewStatus) }}
             </el-tag>
           </div>
           <div class="candidate-actions">
             <el-button @click="handleEdit">编辑</el-button>
-            <el-button type="primary" @click="handleScheduleInterview">安排面试</el-button>
+            <el-button 
+              type="primary" 
+              @click="handleScheduleInterview"
+              v-if="candidate.interviewStatus === 'pending' || candidate.interviewStatus === 'completed'"
+            >
+              安排面试
+            </el-button>
+            <el-button 
+              type="primary" 
+              @click="handleProcessInterview"
+              v-if="candidate.interviewStatus === 'unconfirmed' || candidate.interviewStatus === 'confirmed'"
+            >
+              处理面试结果
+            </el-button>
+            <el-button 
+              type="success" 
+              @click="handleSendOffer"
+              v-if="candidate.process === 'second-interview' && candidate.interviewStatus === 'completed'"
+            >
+              发放Offer
+            </el-button>
           </div>
         </div>
       </template>
@@ -27,220 +47,170 @@
             <el-descriptions-item label="姓名">{{ candidate.name }}</el-descriptions-item>
             <el-descriptions-item label="应聘职位">{{ candidate.position }}</el-descriptions-item>
             <el-descriptions-item label="联系电话">{{ candidate.phone }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ candidate.email }}</el-descriptions-item>
-            <el-descriptions-item label="来源">{{ candidate.source }}</el-descriptions-item>
+            <el-descriptions-item label="邮箱地址">{{ candidate.email }}</el-descriptions-item>
+            <el-descriptions-item label="简历来源">{{ candidate.source }}</el-descriptions-item>
+            <el-descriptions-item label="学历">{{ candidate.education }}</el-descriptions-item>
+            <el-descriptions-item label="工作经验">{{ candidate.experience }}</el-descriptions-item>
+            <el-descriptions-item label="期望薪资">{{ candidate.expectedSalary }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
         
         <el-col :span="12">
-          <el-descriptions title="求职信息" :column="1" border>
-            <el-descriptions-item label="所属资金">
-              <el-tag>{{ candidate.fundPlatform }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="资金ID">{{ candidate.fundId }}</el-descriptions-item>
-            <el-descriptions-item label="学历">{{ candidate.education }}</el-descriptions-item>
-            <el-descriptions-item label="工作经验">{{ candidate.experience }}</el-descriptions-item>
-            <el-descriptions-item label="期望薪资">{{ candidate.expectedSalary }}</el-descriptions-item>
-            <el-descriptions-item label="投递日期">{{ candidate.date }}</el-descriptions-item>
+          <el-descriptions title="资金信息" :column="1" border>
+            <el-descriptions-item label="资金来源">{{ candidate.fundPlatform }}</el-descriptions-item>
+          </el-descriptions>
+          
+          <el-descriptions title="面试进度" :column="1" border class="interview-progress">
+            <el-descriptions-item label="当前阶段">{{ getInterviewStageText(candidate.process) }}</el-descriptions-item>
+            <el-descriptions-item label="面试状态">{{ getInterviewStatusText(candidate.interviewStatus) }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
       </el-row>
       
-      <el-row :gutter="20" style="margin-top: 20px;">
-        <el-col :span="24">
-          <el-descriptions title="综合评价" :column="1" border>
-            <el-descriptions-item label="评分">
-              <el-rate
-                v-model="candidate.rating"
-                disabled
-                show-score
-                text-color="#ff9900"
-                score-template="{value}分"
-              />
-            </el-descriptions-item>
-            <el-descriptions-item label="面试官笔记">
-              <div class="notes">
-                <p>候选人技术基础扎实，对前端框架有深入理解，项目经验丰富。</p>
-                <p>沟通能力良好，团队合作意识强。</p>
-                <p>期望薪资略高于市场平均水平，但能力匹配。</p>
-              </div>
-            </el-descriptions-item>
-          </el-descriptions>
-        </el-col>
-      </el-row>
-    </el-card>
-    
-    <!-- 面试记录 -->
-    <el-card class="interview-records">
-      <template #header>
-        <div class="card-header">
-          <span>面试记录</span>
-        </div>
-      </template>
+      <div class="interview-records">
+        <h4>面试记录</h4>
+        <el-table :data="interviewRecords" style="width: 100%" v-if="interviewRecords.length > 0">
+          <el-table-column prop="round" label="面试轮次" width="100">
+            <template #default="scope">
+              {{
+                scope.row.round === 'first-interview' ? '一面' :
+                scope.row.round === 'second-interview' ? '二面' :
+                scope.row.round === 'third-interview' ? '三面' :
+                scope.row.round === 'hr-interview' ? 'HR面' :
+                scope.row.round === 'final-interview' ? '终面' : scope.row.round
+              }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="interviewer" label="面试官" width="120"></el-table-column>
+          <el-table-column prop="date" label="面试日期" width="120"></el-table-column>
+          <el-table-column prop="time" label="面试时间" width="100"></el-table-column>
+          <el-table-column prop="location" label="面试地点" width="150"></el-table-column>
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="getInterviewStatusType(scope.row.status)">
+                {{ getInterviewRecordStatusText(scope.row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="feedback" label="面试反馈">
+            <template #default="scope">
+              <span v-if="scope.row.feedback">{{ scope.row.feedback }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="rating" label="评分" width="80">
+            <template #default="scope">
+              <span v-if="scope.row.rating > 0">{{ scope.row.rating }}/5</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="scope">
+              <el-button 
+                size="small" 
+                type="primary" 
+                @click="handleViewInterview(scope.row)"
+                :disabled="scope.row.status === 'scheduled'"
+              >
+                查看详情
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty description="暂无面试记录" v-else />
+      </div>
       
-      <el-timeline>
-        <el-timeline-item
-          v-for="(activity, index) in interviewActivities"
-          :key="index"
-          :timestamp="activity.timestamp"
-          placement="top"
-          :color="activity.color"
-        >
-          <el-card :body-style="{ padding: '10px 15px' }">
-            <h4>{{ activity.content }}</h4>
-            <p>{{ activity.timestamp }}</p>
-          </el-card>
-        </el-timeline-item>
-      </el-timeline>
-      
-      <!-- 面试状态操作 -->
-      <div class="interview-status-actions">
-        <h3>面试状态操作</h3>
-        <div class="status-buttons">
-          <el-button 
-            v-for="status in interviewStatusOptions" 
-            :key="status.value"
-            :type="candidate && candidate.interviewStatus === status.value ? 'primary' : 'info'"
-            @click="updateInterviewStatus(status.value)"
-            plain
-          >
-            {{ status.label }}
-          </el-button>
-        </div>
+      <div class="candidate-notes" v-if="candidate.remarks">
+        <h4>备注信息</h4>
+        <div class="notes" v-html="candidate.remarks"></div>
       </div>
     </el-card>
+    
+    <!-- 编辑候选人对话框 -->
+    <el-dialog v-model="dialogVisible" title="编辑候选人" width="500px">
+      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+        <el-form-item label="资金来源" prop="fundId">
+          <el-select v-model="form.fundId" placeholder="请选择资金来源" style="width: 100%">
+            <el-option
+              v-for="fund in funds"
+              :key="fund.id"
+              :label="fund.platform"
+              :value="fund.id"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="form.name" />
+        </el-form-item>
+        <el-form-item label="应聘职位" prop="position">
+          <el-input v-model="form.position" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="form.phone" />
+        </el-form-item>
+        <el-form-item label="邮箱地址">
+          <el-input v-model="form.email" />
+        </el-form-item>
+        <el-form-item label="简历来源">
+          <el-input v-model="form.source" />
+        </el-form-item>
+        <el-form-item label="学历">
+          <el-input v-model="form.education" />
+        </el-form-item>
+        <el-form-item label="工作经验">
+          <el-input v-model="form.experience" />
+        </el-form-item>
+        <el-form-item label="期望薪资">
+          <el-input v-model="form.expectedSalary" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCandidateStore } from '@/stores/candidate'
 import { useFundStore } from '@/stores/fund'
+import { useInterviewStore } from '@/stores/interview'
 
 const route = useRoute()
 const router = useRouter()
 const candidateStore = useCandidateStore()
 const fundStore = useFundStore()
+const interviewStore = useInterviewStore()
 
-const loading = ref(false)
 const dialogVisible = ref(false)
+const loading = ref(false)
+const interviewRecords = ref([])
+
 const formRef = ref()
 
-const interviewStages = ref([
-  { value: 'invite', label: '邀约' },
-  { value: 'first-interview', label: '一面' },
-  { value: 'second-interview', label: '二面' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'entry', label: '入职' }
+const interviewRounds = ref([
+  { value: 'first', label: '一面' },
+  { value: 'second', label: '二面' }
 ])
 
-// 面试状态选项
 const interviewStatusOptions = ref([
-  { value: 'pending', label: '待约' },
-  { value: 'unconfirmed', label: '未确认' },
-  { value: 'confirmed', label: '已确认' },
+  { value: 'scheduled', label: '已安排' },
   { value: 'completed', label: '已完成' },
-  { value: 'rejected', label: '已拒' }
+  { value: 'cancelled', label: '已取消' }
 ])
-
-// 获取面试阶段文本
-const getInterviewStageText = (stage) => {
-  const stageMap = {
-    'invite': '邀约',
-    'first-interview': '一面',
-    'second-interview': '二面',
-    'offer': 'Offer',
-    'entry': '入职'
-  }
-  return stageMap[stage] || '邀约'
-}
-
-// 获取面试阶段标签类型
-const getInterviewStageType = (stage) => {
-  const typeMap = {
-    'invite': 'info',
-    'first-interview': 'warning',
-    'second-interview': 'primary',
-    'offer': 'success',
-    'entry': 'success'
-  }
-  return typeMap[stage] || 'info'
-}
-
-// 获取面试活动记录
-const interviewActivities = ref([
-  {
-    content: 'HR初试',
-    timestamp: '2023-05-01',
-    color: '#0bbd87'
-  },
-  {
-    content: '技术面试',
-    timestamp: '2023-05-03',
-    color: '#0bbd87'
-  },
-  {
-    content: '部门复试',
-    timestamp: '2023-05-05',
-    color: '#409eff'
-  }
-])
-
-// 获取状态标签类型
-const getStatusTagType = (status) => {
-  const typeMap = {
-    pending: 'info',
-    unconfirmed: 'warning',
-    confirmed: 'warning',
-    completed: 'primary',
-    rejected: 'danger',
-    passed: 'success'
-  }
-  return typeMap[status] || 'info'
-}
-
-const candidate = computed(() => candidateStore.currentCandidate)
-
-const funds = computed(() => fundStore.funds)
-
-const form = reactive({
-  id: undefined,
-  fundId: '',
-  name: '',
-  position: '',
-  phone: '',
-  email: '',
-  source: '',
-  education: '',
-  experience: '',
-  expectedSalary: '',
-  interviewStage: 'invite',
-  interviewStatus: 'pending'
-})
 
 const rules = {
-  fundId: [{ required: true, message: '请选择资金来源', trigger: 'change' }],
+  fund_id: [{ required: true, message: '请选择资金来源', trigger: 'change' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   position: [{ required: true, message: '请输入应聘职位', trigger: 'blur' }],
   phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }]
 }
-
-const interviewRecords = ref([
-  {
-    date: '2025-12-01',
-    title: '初试',
-    description: '候选人表现良好，技术基础扎实',
-    interviewer: '面试官A'
-  },
-  {
-    date: '2025-12-03',
-    title: '复试',
-    description: '深入技术讨论，解决问题能力强',
-    interviewer: '面试官B'
-  }
-])
 
 // 返回上一页
 const goBack = () => {
@@ -280,8 +250,22 @@ const handleDelete = () => {
 // 安排面试
 const handleScheduleInterview = () => {
   if (candidate.value) {
-    router.push(`/candidate/schedule/${candidate.value.id}`)
+    router.push({ name: 'InterviewScheduler', params: { id: candidate.value.id } })
   }
+}
+
+// 处理面试结果
+const handleProcessInterview = () => {
+  // 跳转到面试结果处理页面
+  router.push({ 
+    name: 'InterviewResult', 
+    params: { candidateId: candidate.value.id } 
+  })
+}
+
+// 发放Offer
+const handleSendOffer = () => {
+  ElMessage.info('发放Offer功能待实现')
 }
 
 // 更新面试状态
@@ -289,21 +273,141 @@ const updateInterviewStatus = async (status) => {
   if (!candidate.value) return;
   
   try {
-    const updatedData = {
+    const updatedCandidate = {
       ...candidate.value,
       interviewStatus: status
-    };
+    }
     
-    await candidateStore.updateCandidate(candidate.value.id, updatedData);
-    ElMessage.success('面试状态更新成功');
+    await candidateStore.updateCandidate(candidate.value.id, updatedCandidate)
+    ElMessage.success('面试状态更新成功')
   } catch (error) {
-    ElMessage.error('更新面试状态失败');
+    ElMessage.error('更新失败')
   }
 }
 
-// 添加面试记录
-const handleAddInterview = () => {
-  ElMessage.info('添加面试记录功能待实现')
+// 获取面试阶段文本
+const getInterviewStageText = (stage) => {
+  const stageMap = {
+    'invite': '邀约',
+    'first-interview': '一面',
+    'second-interview': '二面',
+    'offer': 'Offer',
+    'entry': '入职'
+  }
+  return stageMap[stage] || '邀约'
+}
+
+// 获取面试阶段标签类型
+const getInterviewStageType = (stage) => {
+  const typeMap = {
+    'invite': 'info',
+    'first-interview': 'warning',
+    'second-interview': 'primary',
+    'offer': 'success',
+    'entry': 'success'
+  }
+  return typeMap[stage] || 'info'
+}
+
+// 获取候选人面试状态文本
+const getInterviewStatusText = (status) => {
+  const statusMap = {
+    'pending': '待约',
+    'unconfirmed': '未确认',
+    'confirmed': '已确认',
+    'completed': '已完成',
+    'rejected': '已拒'
+  }
+  return statusMap[status] || '待约'
+}
+
+// 获取面试记录状态文本
+const getInterviewRecordStatusText = (status) => {
+  const statusMap = {
+    'scheduled': '已安排',
+    'completed': '已完成',
+    'cancelled': '已取消'
+  }
+  return statusMap[status] || '未知'
+}
+
+// 获取面试记录状态类型
+const getInterviewStatusType = (status) => {
+  const typeMap = {
+    'scheduled': 'warning',
+    'completed': 'success',
+    'cancelled': 'danger'
+  }
+  return typeMap[status] || 'info'
+}
+
+// 获取面试记录状态颜色
+const getInterviewStatusColor = (status) => {
+  const colorMap = {
+    'scheduled': '#E6A23C',
+    'completed': '#67C23A',
+    'cancelled': '#F56C6C'
+  }
+  return colorMap[status] || '#909399'
+}
+
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN')
+}
+
+// 格式化日期时间
+const formatDateTime = (date, time) => {
+  if (!date || !time) return ''
+  return `${date} ${time}`
+}
+
+// 获取状态标签类型
+const getStatusTagType = (status) => {
+  const typeMap = {
+    'pending': 'info',
+    'unconfirmed': 'warning',
+    'confirmed': 'success',
+    'completed': 'primary',
+    'rejected': 'danger'
+  }
+  return typeMap[status] || 'info'
+}
+
+const candidate = computed(() => candidateStore.currentCandidate)
+
+// 面试记录
+//const interviewRecords = ref([])
+
+const funds = computed(() => fundStore.funds)
+
+const form = reactive({
+  id: undefined,
+  fund_id: '',
+  name: '',
+  position: '',
+  phone: '',
+  email: '',
+  source: '',
+  education: '',
+  experience: '',
+  expected_salary: '',
+  process: 'invite',
+  status: 'pending',
+  interview_status: 'pending'
+})
+
+// 加载面试记录
+const loadInterviewRecords = async () => {
+  if (!candidate.value) return
+  
+  try {
+    interviewRecords.value = await interviewStore.fetchInterviewsByCandidateId(candidate.value.id)
+  } catch (error) {
+    ElMessage.error('加载面试记录失败')
+  }
 }
 
 // 提交表单
@@ -325,20 +429,18 @@ const submitForm = () => {
 }
 
 // 页面加载时获取候选人详情
-onMounted(() => {
+onMounted(async () => {
   const candidateId = route.params.id
   console.log('加载候选人详情，ID:', candidateId)
   
   if (candidateId) {
-    // 在实际项目中，这里会调用API获取候选人详情
-    const foundCandidate = candidateStore.candidates.find(c => c.id == candidateId)
-    console.log('查找候选人结果:', foundCandidate)
-    
-    if (foundCandidate) {
-      candidateStore.setCurrentCandidate(foundCandidate)
-      console.log('设置当前候选人成功')
-    } else {
-      console.error('候选人不存在，ID:', candidateId)
+    try {
+      await candidateStore.fetchCandidateById(candidateId)
+      console.log('候选人详情加载成功')
+      // 加载面试记录
+      await loadInterviewRecords()
+    } catch (error) {
+      console.error('加载候选人详情失败:', error)
       ElMessage.error('候选人不存在')
       router.push({ name: 'CandidateList' })
     }
@@ -409,30 +511,18 @@ onMounted(() => {
 }
 
 .interview-records h4 {
-  margin: 0 0 5px 0;
-  font-size: 14px;
-  font-weight: normal;
+  margin-bottom: 10px;
 }
 
-.interview-records p {
-  margin: 0;
-  font-size: 12px;
-  color: #999;
+.interview-progress {
+  margin-top: 20px;
 }
 
-.interview-status-actions {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #eee;
+.candidate-notes {
+  margin-top: 20px;
 }
 
-.interview-status-actions h3 {
-  margin-bottom: 15px;
-}
-
-.status-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+.candidate-notes h4 {
+  margin-bottom: 10px;
 }
 </style>

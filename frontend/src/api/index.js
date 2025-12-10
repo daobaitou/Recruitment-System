@@ -51,6 +51,7 @@ export const userApi = {
   getUsers: () => service.get('/auth/users'),
   addUser: (data) => service.post('/users', data),
   updateUser: (id, data) => service.put(`/users/${id}`, data),
+  updateUserInfo: (data) => service.put('/auth/userinfo', data),
   deleteUser: (id) => service.delete(`/users/${id}`)
 }
 
@@ -71,6 +72,16 @@ export const candidateApi = {
   addCandidate: (data) => service.post('/candidates', data),
   updateCandidate: (id, data) => service.put(`/candidates/${id}`, data),
   deleteCandidate: (id) => service.delete(`/candidates/${id}`)
+}
+
+// 面试相关API
+export const interviewApi = {
+  getInterviews: () => service.get('/interviews'),
+  getInterview: (id) => service.get(`/interviews/${id}`),
+  getInterviewsByCandidateId: (candidateId) => service.get(`/interviews/candidate/${candidateId}`),
+  createInterview: (data) => service.post('/interviews', data),
+  updateInterview: (id, data) => service.put(`/interviews/${id}`, data),
+  deleteInterview: (id) => service.delete(`/interviews/${id}`)
 }
 
 export default service

@@ -1,6 +1,6 @@
 <template>
-  <div class="interview-scheduler-container" v-loading="loading">
-    <el-page-header @back="goBack" content="安排面试" class="page-header" />
+  <div class="interview-result-container" v-loading="loading">
+    <el-page-header @back="goBack" content="面试结果" class="page-header" />
     
     <el-card>
       <template #header>
@@ -19,7 +19,7 @@
     <el-card class="form-card">
       <template #header>
         <div class="card-header">
-          <span>面试安排</span>
+          <span>面试结果</span>
         </div>
       </template>
       
@@ -30,29 +30,15 @@
         label-width="120px" 
         class="interview-form"
       >
-        <el-form-item label="面试轮次" prop="round">
-          <el-select v-model="form.round" placeholder="请选择面试轮次" style="width: 100%">
+        <el-form-item label="面试轮次">
+          <el-select v-model="form.round" placeholder="请选择面试轮次" style="width: 100%" disabled>
             <el-option
               v-for="item in interviewRounds"
               :key="item.value"
               :label="item.label"
               :value="item.value"
-              :disabled="item.disabled"
             ></el-option>
           </el-select>
-        </el-form-item>
-        
-        <el-form-item label="面试主题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入面试主题" />
-        </el-form-item>
-        
-        <el-form-item label="面试描述">
-          <el-input 
-            v-model="form.description" 
-            type="textarea" 
-            placeholder="请输入面试描述"
-            :rows="3"
-          />
         </el-form-item>
         
         <el-form-item label="面试官" prop="interviewer">
@@ -82,13 +68,28 @@
           <el-input v-model="form.location" placeholder="请输入面试地点" />
         </el-form-item>
         
-        <el-form-item label="备注">
+        <el-form-item label="面试反馈" prop="feedback">
           <el-input 
-            v-model="form.remarks" 
+            v-model="form.feedback" 
             type="textarea" 
-            placeholder="请输入备注信息"
-            :rows="2"
+            placeholder="请输入面试反馈"
+            :rows="4"
           />
+        </el-form-item>
+        
+        <el-form-item label="面试评分" prop="rating">
+          <el-rate v-model="form.rating" />
+        </el-form-item>
+        
+        <el-form-item label="面试状态" prop="status">
+          <el-select v-model="form.status" placeholder="请选择面试状态" style="width: 100%">
+            <el-option
+              v-for="item in interviewStatusOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            ></el-option>
+          </el-select>
         </el-form-item>
       </el-form>
       
@@ -116,6 +117,7 @@ const formRef = ref()
 const loading = ref(false)
 
 const form = reactive({
+  id: undefined,
   candidateId: undefined,
   round: '', // 面试轮次
   title: '',
@@ -124,53 +126,31 @@ const form = reactive({
   date: '',
   time: '',
   location: '',
-  remarks: '' // 安排面试时的备注
+  status: 'completed',
+  feedback: '',
+  rating: 0
 })
 
-// 根据候选人当前阶段动态设置面试轮次选项
-const interviewRounds = computed(() => {
-  if (!candidate.value) return []
-  
-  // 只保留一面和二面两个选项
-  const rounds = [
-    { value: 'first-interview', label: '一面' },
-    { value: 'second-interview', label: '二面' }
-  ]
+const interviewRounds = ref([
+  { value: 'first-interview', label: '一面' },
+  { value: 'second-interview', label: '二面' },
+  { value: 'third-interview', label: '三面' },
+  { value: 'hr-interview', label: 'HR面' },
+  { value: 'final-interview', label: '终面' }
+])
 
-  // 根据候选人的当前阶段设置默认选项和禁用状态
-  if (candidate.value.process === 'invite') {
-    // 如果是邀约阶段，默认安排一面
-    form.round = 'first-interview'
-    // 禁用二面选项
-    rounds.forEach(item => {
-      if (item.value === 'second-interview') {
-        item.disabled = true
-      }
-    })
-  } else if (candidate.value.process === 'first-interview') {
-    // 如果是一面阶段，默认安排二面
-    form.round = 'second-interview'
-    // 禁用一面选项
-    rounds.forEach(item => {
-      if (item.value === 'first-interview') {
-        item.disabled = true
-      }
-    })
-  } else {
-    // 其他情况，默认安排一面
-    form.round = 'first-interview'
-  }
-  
-  return rounds
-})
+const interviewStatusOptions = ref([
+  { value: 'scheduled', label: '已安排' },
+  { value: 'completed', label: '已完成' },
+  { value: 'cancelled', label: '已取消' }
+])
 
 const rules = {
-  round: [{ required: true, message: '请选择面试轮次', trigger: 'change' }],
-  title: [{ required: true, message: '请输入面试主题', trigger: 'blur' }],
   interviewer: [{ required: true, message: '请输入面试官姓名', trigger: 'blur' }],
   date: [{ required: true, message: '请选择面试日期', trigger: 'change' }],
   time: [{ required: true, message: '请选择面试时间', trigger: 'change' }],
-  location: [{ required: true, message: '请输入面试地点', trigger: 'blur' }]
+  location: [{ required: true, message: '请输入面试地点', trigger: 'blur' }],
+  status: [{ required: true, message: '请选择面试状态', trigger: 'change' }]
 }
 
 const candidate = computed(() => candidateStore.currentCandidate)
@@ -181,9 +161,6 @@ const getInterviewStageText = (stage) => {
     'invite': '邀约',
     'first-interview': '一面',
     'second-interview': '二面',
-    'third-interview': '三面',
-    'hr-interview': 'HR面',
-    'final-interview': '终面',
     'offer': 'Offer',
     'entry': '入职'
   }
@@ -196,7 +173,7 @@ const goBack = () => {
 }
 
 // 提交表单
-const submitForm = () => {
+const submitForm = async () => {
   formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
@@ -204,50 +181,32 @@ const submitForm = () => {
         // 创建面试记录
         const interviewData = {
           candidateId: form.candidateId,
-          title: `${form.round === 'first-interview' ? '一面' : 
-                 form.round === 'second-interview' ? '二面' :
-                 form.round === 'third-interview' ? '三面' :
-                 form.round === 'hr-interview' ? 'HR面' : '终面'}-${candidate.value.name}`,
           round: form.round,
-          description: form.description,
+          title: `${form.round === 'first-interview' ? '一面' : '二面'}-${form.candidateName}`,
+          description: form.notes,
           interviewer: form.interviewer,
-          date: form.date, // 保持原始日期格式
-          time: form.time.includes(':') && form.time.split(':').length === 2 ? form.time + ':00' : form.time, // 确保时间格式为 HH:mm:ss
+          date: form.date,
+          time: form.time,
           location: form.location,
-          status: 'scheduled'
+          status: 'completed',
+          feedback: form.feedback,
+          rating: form.rating
         }
         
         await interviewStore.createInterview(interviewData)
         
-        // 更新候选人信息
+        // 更新候选人状态为已完成
         const updateData = {
-          fund_id: candidate.value.fundId, // 保留原有的资金来源
-          name: candidate.value.name,
-          position: candidate.value.position,
-          process: form.round,
-          status: 'pending', // 添加默认状态
-          interview_status: 'unconfirmed', // 安排面试后状态改为"未确认"
-          // 根据面试轮次更新对应的面试信息字段
-          ...(form.round === 'first-interview' && {
-            first_interview_date: form.date,
-            first_interview_time: form.time,
-            first_interview_location: form.location
-          }),
-          ...(form.round === 'second-interview' && {
-            second_interview_date: form.date,
-            second_interview_time: form.time,
-            second_interview_location: form.location
-          }),
-          schedule_remarks: form.description // 安排面试时的备注
+          interview_status: 'completed'
         }
         
         await candidateStore.updateCandidate(form.candidateId, updateData)
         
-        ElMessage.success('面试安排成功')
+        ElMessage.success('面试结果处理成功')
         router.push({ name: 'CandidateDetail', params: { id: form.candidateId } })
       } catch (error) {
-        console.error('安排面试失败:', error)
-        ElMessage.error('安排面试失败: ' + (error.response?.data?.message || error.message))
+        console.error('处理面试结果失败:', error)
+        ElMessage.error('处理面试结果失败: ' + (error.response?.data?.message || error.message))
       } finally {
         loading.value = false
       }
@@ -261,16 +220,36 @@ onMounted(async () => {
   
   if (candidateId) {
     try {
+      // 获取候选人信息
       await candidateStore.fetchCandidateById(candidateId)
-      form.candidateId = candidateId
       
-      // 设置默认标题
+      // 根据候选人的面试阶段预填充表单
       if (candidate.value) {
+        form.candidateId = candidateId
+        form.candidateName = candidate.value.name
+        form.position = candidate.value.position
+        
+        // 根据面试阶段预填充面试信息
+        if (candidate.value.process === 'first-interview') {
+          form.round = 'first-interview'
+          form.interviewer = '' // 面试官需要手动填写
+          form.date = candidate.value.firstInterviewDate || ''
+          form.time = candidate.value.firstInterviewTime || ''
+          form.location = candidate.value.firstInterviewLocation || ''
+        } else if (candidate.value.process === 'second-interview') {
+          form.round = 'second-interview'
+          form.interviewer = '' // 面试官需要手动填写
+          form.date = candidate.value.secondInterviewDate || ''
+          form.time = candidate.value.secondInterviewTime || ''
+          form.location = candidate.value.secondInterviewLocation || ''
+        }
+        
+        // 设置默认标题
         form.title = `面试-${candidate.value.name}`
       }
     } catch (error) {
-      console.error('加载候选人详情失败:', error)
-      ElMessage.error('候选人不存在')
+      console.error('加载候选人信息失败:', error)
+      ElMessage.error('候选人信息加载失败')
       router.push({ name: 'CandidateList' })
     }
   }
@@ -278,7 +257,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.interview-scheduler-container {
+.interview-result-container {
   padding: 20px;
 }
 

@@ -39,7 +39,7 @@ export const asyncRoutes = [
         path: 'list',
         name: 'FundList',
         component: () => import('@/views/FundList.vue'),
-        meta: { title: '资金列表', roles: ['admin', 'finance'] }
+        meta: { title: '充值记录', roles: ['admin', 'finance'] }
       },
       {
         path: 'detail/:id',
@@ -74,6 +74,13 @@ export const asyncRoutes = [
         component: () => import('@/views/InterviewScheduler.vue'),
         meta: { title: '安排面试', roles: ['admin', 'hr'] },
         hidden: true
+      },
+      {
+        path: 'result/:id',
+        name: 'InterviewResult',
+        component: () => import('@/views/InterviewResult.vue'),
+        meta: { title: '面试结果', roles: ['admin', 'hr', 'interviewer'] },
+        hidden: true
       }
     ]
   },
@@ -98,16 +105,11 @@ export const asyncRoutes = [
         path: 'profile',
         name: 'ProfileEdit',
         component: () => import('@/views/system/ProfileEdit.vue'),
-        meta: { title: '个人资料', roles: ['admin', 'hr', 'finance', 'interviewer'] },
+        meta: { title: '个人资料', roles: ['admin'] },
         hidden: true
       }
     ]
-  }
+  },
+  // 404 页面必须放在最后
+  { path: '/:pathMatch(.*)*', redirect: '/404', hidden: true }
 ]
-
-// 404页面必须放在最后
-export const notFoundRoute = { 
-  path: '/:pathMatch(.*)*', 
-  redirect: '/404', 
-  hidden: true 
-}

@@ -3,7 +3,7 @@
     <el-card class="fund-list-card">
       <template #header>
         <div class="card-header">
-          <span>资金明细</span>
+          <span>充值记录</span>
           <div class="header-actions">
             <el-button type="primary" size="large" @click="handleAddFund" style="margin-left: auto">添加资金</el-button>
           </div>
@@ -34,9 +34,9 @@
             <span style="font-size: 16px;">{{ scope.row.position }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="rechargeByName" label="充值人" min-width="120">
+        <el-table-column prop="recharge_by_name" label="充值人" min-width="120">
           <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.rechargeByName }}</span>
+            <span style="font-size: 16px;">{{ scope.row.recharge_by_name || '未知' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="amount" label="金额" min-width="120" align="center">
@@ -46,7 +46,7 @@
         </el-table-column>
         <el-table-column prop="date" label="日期" min-width="140" align="center">
           <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.date }}</span>
+            <span style="font-size: 16px;">{{ formatDate(scope.row.date) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="statusText" label="状态" min-width="120" align="center">
@@ -112,7 +112,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button size="large" @click="dialogVisible = false">取消</el-button>
-          <el-button size="large" type="primary" @click="handleSubmit">确定</el-button>
+          <el-button size="large" type="primary" @click="submitForm">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -120,104 +120,72 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFundStore } from '@/stores/fund'
 
+// 资金store
 const fundStore = useFundStore()
+
+// 路由
 const router = useRouter()
 
-// 表单引用
-const formRef = ref(null)
-
-// 对话框状态
+// 响应式数据
+const funds = ref([])
+const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
-const isEditing = ref(false)
+const isEdit = ref(false)
 
-// 表单数据 - 使用 reactive 替代 ref 包装对象
+// 表单数据
 const form = reactive({
   id: null,
   name: '',
   platform: '',
   position: '',
   rechargeByName: '',
-  amount: null,
-  date: '',
-  status: 'unused'
+  amount: '',
+  date: ''
 })
 
 // 表单验证规则
 const rules = {
   name: [{ required: true, message: '请输入资金名称', trigger: 'blur' }],
-  platform: [{ required: true, message: '请输入平台名称', trigger: 'blur' }],
-  position: [{ required: true, message: '请输入招聘岗位', trigger: 'blur' }],
-  rechargeByName: [{ required: true, message: '请输入充值人', trigger: 'blur' }],
-  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
-  date: [{ required: true, message: '请选择日期', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
+  platform: [{ required: true, message: '请输入平台', trigger: 'blur' }],
+  position: [{ required: true, message: '请输入招聘岗位', trigger: 'blur' }]
 }
 
-// 资金列表
-const funds = computed(() => fundStore.funds)
-const loading = computed(() => fundStore.loading)
-
-// 状态标签类型映射 - 已整合到模板中，移除此函数
-// 获取状态文本（用于在列表中显示）
-const getStatusText = (status) => {
-  switch (status) {
-    case 'unused': return '未使用'
-    case 'using': return '使用中'
-    case 'used': return '已用完'
-    case 'expired': return '已过期'
-    default: return '未知'
-  }
-}
+// 表单引用
+const formRef = ref(null)
 
 // 删除资金
-const handleDeleteFund = async (fund) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除 ${fund.name} 这笔资金吗？`,
-      '警告',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    await fundStore.deleteFund(fund.id)
-    ElMessage.success('删除成功')
-    await fundStore.fetchFunds()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除失败:', error)
-      ElMessage.error('删除失败')
+const handleDeleteFund = (fund) => {
+  ElMessageBox.confirm(
+    `确定要删除资金 "${fund.name}" 吗？`,
+    '确认删除',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
     }
-  }
+  ).then(async () => {
+    try {
+      await fundStore.deleteFund(fund.id)
+      ElMessage.success('资金删除成功')
+      await loadFunds() // 重新加载列表
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('资金删除失败')
+    }
+  }).catch(() => {
+    // 用户取消删除
+  })
 }
 
 // 查看资金详情
 const viewFundDetail = (fund) => {
   router.push(`/fund/detail/${fund.id}`)
-}
-
-// 添加资金
-const handleAddFund = () => {
-  dialogTitle.value = '添加资金'
-  isEditing.value = false
-  resetForm()
-  dialogVisible.value = true
-}
-
-// 编辑资金
-const handleEditFund = (fund) => {
-  dialogTitle.value = '编辑资金'
-  isEditing.value = true
-  Object.assign(form, fund)
-  dialogVisible.value = true
 }
 
 // 重置表单
@@ -228,72 +196,89 @@ const resetForm = () => {
     platform: '',
     position: '',
     rechargeByName: '',
-    amount: null,
-    date: '',
-    status: 'unused'
+    amount: '',
+    date: ''
   })
 }
 
-// 提交表单
-const handleSubmit = async () => {
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-  
-    try {
-      // 确保日期格式正确
-      let formattedDate = form.date;
-      if (form.date && typeof form.date === 'object') {
-        // 如果是Date对象，格式化为YYYY-MM-DD
-        formattedDate = form.date.toISOString().split('T')[0];
-      } else if (form.date && typeof form.date === 'string' && form.date.includes('T')) {
-        // 如果是ISO字符串，提取日期部分
-        formattedDate = form.date.split('T')[0];
-      }
-      
-      const fundData = {
-        name: form.name,
-        platform: form.platform,
-        position: form.position,
-        rechargeBy: form.rechargeBy || null,
-        rechargeByName: form.rechargeByName,
-        amount: form.amount,
-        date: formattedDate,
-        status: form.status
-      }
+// 添加资金
+const handleAddFund = () => {
+  dialogTitle.value = '添加资金'
+  isEdit.value = false
+  resetForm()
+  dialogVisible.value = true
+}
 
-      if (isEditing.value) {
-        // 编辑资金
-        await fundStore.updateFund({
-          ...fundData,
-          id: form.id
-        })
-        ElMessage.success('更新资金成功')
-      } else {
-        // 添加资金
-        await fundStore.createFund(fundData)
-        ElMessage.success('添加资金成功')
-      }
-      
-      dialogVisible.value = false
-      await fundStore.fetchFunds()
-    } catch (error) {
-      console.error('操作失败:', error)
-      ElMessage.error(isEditing.value ? '更新资金失败' : '添加资金失败')
-    }
+// 编辑资金
+const handleEditFund = (fund) => {
+  dialogTitle.value = '编辑资金'
+  isEdit.value = true
+  // 填充表单数据
+  Object.assign(form, {
+    id: fund.id,
+    name: fund.name,
+    platform: fund.platform,
+    position: fund.position,
+    rechargeByName: fund.recharge_by_name,
+    amount: fund.amount,
+    date: fund.date ? fund.date.split('T')[0] : '' // 格式化日期
   })
+  dialogVisible.value = true
+}
+
+// 提交表单
+const submitForm = async () => {
+  try {
+    await formRef.value.validate()
+    
+    const fundData = {
+      name: form.name,
+      platform: form.platform,
+      position: form.position,
+      rechargeByName: form.rechargeByName,
+      amount: form.amount,
+      date: form.date
+    }
+    
+    if (isEdit.value) {
+      // 编辑资金
+      await fundStore.updateFund(form.id, fundData)
+      ElMessage.success('资金更新成功')
+    } else {
+      // 添加资金
+      await fundStore.createFund(fundData)
+      ElMessage.success('资金添加成功')
+    }
+    
+    dialogVisible.value = false
+    await loadFunds() // 重新加载列表
+  } catch (error) {
+    console.error('操作失败:', error)
+    ElMessage.error(isEdit.value ? '资金更新失败' : '资金添加失败')
+  }
+}
+
+// 格式化日期
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN')
 }
 
 // 加载资金列表
 const loadFunds = async () => {
+  loading.value = true
   try {
     await fundStore.fetchFunds()
+    funds.value = fundStore.funds
   } catch (error) {
     console.error('加载资金列表失败:', error)
     ElMessage.error('加载资金列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
-// 初始化
+// 组件挂载时加载数据
 onMounted(() => {
   loadFunds()
 })

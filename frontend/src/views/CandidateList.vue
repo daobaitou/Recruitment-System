@@ -1,65 +1,75 @@
 <template>
-  <div class="candidate-list full-screen">
-    <el-card class="box-card full-height-card">
+  <div class="candidate-list-container">
+    <el-card class="candidate-list-card">
       <template #header>
         <div class="card-header">
-          <span class="header-title">候选人列表</span>
-          <el-button type="primary" size="large" @click="handleAddCandidate">添加候选人</el-button>
+          <span>候选人列表</span>
+          <div class="header-actions">
+            <el-input
+              v-model="searchKeyword"
+              placeholder="搜索候选人..."
+              style="width: 300px; margin-right: 20px"
+              clearable
+              @clear="handleSearch"
+              @keyup.enter="handleSearch"
+            >
+              <template #append>
+                <el-button @click="handleSearch">搜索</el-button>
+              </template>
+            </el-input>
+            <el-button type="primary" size="large" @click="handleAddCandidate">添加候选人</el-button>
+          </div>
         </div>
       </template>
       
-      <!-- 状态筛选 -->
-      <div class="status-filter">
-        <el-tag 
-          v-for="status in statusOptions" 
-          :key="status.value"
-          :type="currentStatus === status.value ? 'primary' : 'info'"
-          @click="filterByStatus(status.value)"
-          class="status-tag"
-          size="large"
-          style="font-size: 16px; padding: 15px 20px; margin-right: 15px; cursor: pointer;"
-        >
-          {{ status.label }}
-        </el-tag>
-      </div>
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="全部" name="all"></el-tab-pane>
+        <el-tab-pane label="待约" name="pending"></el-tab-pane>
+        <el-tab-pane label="未确认" name="unconfirmed"></el-tab-pane>
+        <el-tab-pane label="已确认" name="confirmed"></el-tab-pane>
+        <el-tab-pane label="已完成" name="completed"></el-tab-pane>
+        <el-tab-pane label="已拒" name="rejected"></el-tab-pane>
+      </el-tabs>
       
-      <!-- 候选人列表 -->
       <el-table 
-        :data="filteredCandidates" 
+        :data="paginatedCandidates" 
         style="width: 100%" 
         v-loading="loading"
-        class="enlarged-table"
-        :cell-style="{ padding: '15px 0' }"
+        :cell-style="{ padding: '15px 0' }" 
         :header-cell-style="{ padding: '15px 0', fontWeight: 'bold' }"
+        :row-style="{ height: '60px' }"
+        :header-row-style="{ height: '60px' }"
       >
-        <el-table-column prop="id" label="ID" />
-        <el-table-column prop="name" label="姓名">
+        <el-table-column prop="name" label="姓名" min-width="120">
           <template #default="scope">
-            <span style="font-size: 16px; font-weight: bold">{{ scope.row.name }}</span>
+            <span style="font-size: 16px; font-weight: bold;">{{ scope.row.name }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="position" label="应聘职位" />
-        <el-table-column prop="fundPlatform" label="资金来源" />
-        <el-table-column prop="date" label="录入日期" />
-        <el-table-column prop="interviewStage" label="面试阶段">
+        <el-table-column prop="position" label="应聘职位" min-width="150">
           <template #default="scope">
-            <el-tag :type="getInterviewStageType(scope.row.process)" size="large">
-              {{ getInterviewStageText(scope.row.process) }}
-            </el-tag>
+            <span style="font-size: 16px;">{{ scope.row.position }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="statusText" label="状态">
+        <el-table-column prop="fundName" label="资金来源" min-width="150">
           <template #default="scope">
-            <el-tag :type="getStatusTypeByInterviewStatus(scope.row.interviewStatus)" size="large">
-              {{ scope.row.statusText }}
-            </el-tag>
+            <el-tag>{{ scope.row.fundName || getFundNameById(scope.row.fundId) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="320">
+        <el-table-column prop="phone" label="联系电话" min-width="120">
           <template #default="scope">
-            <el-button size="large" @click="handleViewDetail(scope.row)">查看详情</el-button>
-            <el-button size="large" type="primary" @click="handleEdit(scope.row)">编辑</el-button>
-            <el-button size="large" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <span style="font-size: 16px;">{{ scope.row.phone }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="date" label="投递日期" min-width="120" align="center">
+          <template #default="scope">
+            <span style="font-size: 16px;">{{ scope.row.date }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" min-width="320" align="center">
+          <template #default="{ row }">
+            <el-button size="large" @click="handleViewDetail(row)">查看详情</el-button>
+            <el-button size="large" type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button size="large" type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -68,11 +78,11 @@
         v-model:current-page="pagination.currentPage"
         v-model:page-size="pagination.pageSize"
         :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
         :total="pagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        class="pagination-bar"
+        style="margin-top: 20px; justify-content: center;"
       />
     </el-card>
     
@@ -82,9 +92,9 @@
         <el-form-item label="资金来源" prop="fundId">
           <el-select v-model="form.fundId" placeholder="请选择资金来源" style="width: 100%">
             <el-option
-              v-for="fund in funds"
+              v-for="fund in sortedFunds"
               :key="fund.id"
-              :label="`${fund.platform} - ${fund.position}`"
+              :label="`${fund.name} - ${fund.position}`"
               :value="fund.id"
             />
           </el-select>
@@ -112,26 +122,6 @@
         </el-form-item>
         <el-form-item label="期望薪资" prop="expectedSalary">
           <el-input v-model="form.expectedSalary" />
-        </el-form-item>
-        <el-form-item label="面试阶段" prop="interviewStage">
-          <el-select v-model="form.interviewStage" placeholder="请选择面试阶段" style="width: 100%">
-            <el-option
-              v-for="stage in interviewStages"
-              :key="stage.value"
-              :label="stage.label"
-              :value="stage.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="面试状态" prop="interviewStatus">
-          <el-select v-model="form.interviewStatus" placeholder="请选择面试状态" style="width: 100%">
-            <el-option
-              v-for="status in interviewStatusOptions"
-              :key="status.value"
-              :label="status.label"
-              :value="status.value"
-            />
-          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -178,9 +168,7 @@ const form = reactive({
   source: '',
   education: '',
   experience: '',
-  expectedSalary: '',
-  interviewStage: 'invite',
-  interviewStatus: 'pending'
+  expectedSalary: ''
 })
 
 // 表单验证规则
@@ -188,12 +176,9 @@ const rules = {
   fundId: [{ required: true, message: '请选择资金来源', trigger: 'change' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   position: [{ required: true, message: '请输入应聘职位', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
-  email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }
-  ]
+  phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }]
 }
+
 
 // 分页配置
 const pagination = reactive({
@@ -202,157 +187,87 @@ const pagination = reactive({
   total: 0
 })
 
-// 当前状态筛选
-const currentStatus = ref('all')
+// 获取资金列表并按时间排序（最早的在最下面）
+const sortedFunds = computed(() => {
+  // 按资金名称中的时间部分排序，最早的在最下面
+  return [...funds.value].sort((a, b) => {
+    // 提取资金名称中的时间部分进行比较
+    const timeA = extractTimeFromFundName(a.name);
+    const timeB = extractTimeFromFundName(b.name);
+    
+    // 降序排列，最新的在前面，最早的在后面
+    return timeB.localeCompare(timeA);
+  });
+});
+
+// 从资金名称中提取时间部分
+const extractTimeFromFundName = (fundName) => {
+  // 假设资金名称格式为 "YYYYMM平台名称"，如 "202512前程无忧"
+  // 提取前6位作为时间标识
+  const timePart = fundName.substring(0, 6);
+  return timePart;
+};
 
 // 获取资金列表
 const funds = computed(() => fundStore.funds)
 
-// 状态选项 - 与候选人数据中的process字段值保持一致
-const statusOptions = ref([
-  { value: 'all', label: '全部' },
-  { value: 'invite', label: '邀约' },
-  { value: 'first-interview', label: '一面' },
-  { value: 'second-interview', label: '二面' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'entry', label: '入职' }
-])
+// 获取候选人列表
+const candidates = computed(() => candidateStore.candidates)
 
-// 面试阶段选项
-const interviewStages = ref([
-  { value: 'invite', label: '邀约' },
-  { value: 'first-interview', label: '一面' },
-  { value: 'second-interview', label: '二面' },
-  { value: 'offer', label: 'Offer' },
-  { value: 'entry', label: '入职' }
-])
+// 获取当前用户
+const currentUser = computed(() => userStore.currentUser)
 
-// 面试状态选项
-const interviewStatusOptions = ref([
-  { value: 'pending', label: '待约' },
-  { value: 'unconfirmed', label: '未确认' },
-  { value: 'confirmed', label: '已确认' },
-  { value: 'completed', label: '已完成' },
-  { value: 'rejected', label: '已拒' }
-])
 
 // 获取状态标签类型
-const getStatusTypeByInterviewStatus = (interviewStatus) => {
+const getStatusTagType = (status) => {
   const typeMap = {
-    pending: 'info',
-    unconfirmed: 'warning',
-    confirmed: 'primary',
-    completed: 'success',
-    rejected: 'danger'
+    'pending': 'info',
+    'unconfirmed': 'warning',
+    'confirmed': 'success',
+    'completed': 'primary',
+    'rejected': 'danger'
   }
-  return typeMap[interviewStatus] || 'info'
+  return typeMap[status] || 'info'
 }
 
-// 获取面试阶段文本
-const getInterviewStageText = (stage) => {
-  const stageMap = {
-    'invite': '邀约',
-    'first-interview': '一面',
-    'second-interview': '二面',
-    'offer': 'Offer',
-    'entry': '入职'
-  }
-  return stageMap[stage] || '邀约'
+// 根据资金ID获取资金名称
+const getFundNameById = (fundId) => {
+  const fund = funds.value.find(f => f.id === fundId)
+  return fund ? fund.name : '未知资金'
 }
 
-// 获取面试阶段标签类型
-const getInterviewStageType = (stage) => {
-  const typeMap = {
-    'invite': 'info',
-    'first-interview': 'warning',
-    'second-interview': 'primary',
-    'offer': 'success',
-    'entry': 'success'
-  }
-  return typeMap[stage] || 'info'
-}
-
-// 过滤候选人状态
-const filterByStatus = (status) => {
-  currentStatus.value = status
-  // 在实际项目中，这里可能需要重新加载数据或过滤现有数据
-}
-
-// 查看候选人详情
-const handleViewDetail = (row) => {
-  candidateStore.setCurrentCandidate(row)
-  router.push(`/candidate/detail/${row.id}`)
-}
-
-// 安排面试
-const handleScheduleInterview = (row) => {
-  router.push(`/candidate/schedule/${row.id}`)
-}
-
-// 删除候选人
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除候选人"${row.name}"吗？`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      console.log('正在删除候选人:', row)
-      const index = candidateStore.candidates.findIndex(c => c.id === row.id)
-      if (index !== -1) {
-        await candidateStore.deleteCandidate(row.id)
-        ElMessage.success('删除成功')
-        console.log('候选人删除成功')
-      } else {
-        console.warn('未找到要删除的候选人:', row.id)
-        ElMessage.warning('未找到要删除的候选人')
-      }
-    } catch (error) {
-      console.error('删除候选人失败:', error)
-      ElMessage.error('删除失败: ' + (error.message || '未知错误'))
-    }
-  }).catch(() => {
-    // 取消删除
-    console.log('用户取消删除操作')
-  })
-}
-
-// 过滤后的候选人列表
+// 筛选后的候选人列表
 const filteredCandidates = computed(() => {
-  console.log('开始筛选候选人数据，当前状态:', currentStatus.value, '搜索关键词:', searchKeyword.value)
-  let candidates = candidateStore.candidates
+  console.log('开始筛选候选人数据，当前状态:', activeTab.value, '搜索关键词:', searchKeyword.value)
   
-  // 根据状态筛选过滤
-  if (currentStatus.value !== 'all') {
-    console.log('按状态筛选:', currentStatus.value)
-    const beforeFilter = candidates.length
-    candidates = candidates.filter(c => {
-      const match = c.process === currentStatus.value
-      console.log('候选人筛选:', c.name, c.process, '匹配:', match)
-      return match
-    })
-    console.log('状态筛选完成，筛选前:', beforeFilter, '筛选后:', candidates.length)
+  let filtered = [...candidates.value]
+  
+  // 根据标签页筛选
+  if (activeTab.value !== 'all') {
+    filtered = filtered.filter(candidate => candidate.interviewStatus === activeTab.value)
   }
   
-  // 根据搜索关键字过滤
+  // 根据搜索关键词筛选
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
-    console.log('按关键字筛选:', keyword)
-    const beforeFilter = candidates.length
-    candidates = candidates.filter(c => 
-      c.name.toLowerCase().includes(keyword) ||
-      c.position.toLowerCase().includes(keyword)
+    filtered = filtered.filter(candidate => 
+      candidate.name.toLowerCase().includes(keyword) ||
+      candidate.position.toLowerCase().includes(keyword) ||
+      candidate.phone.includes(keyword) ||
+      candidate.email.toLowerCase().includes(keyword)
     )
-    console.log('关键字筛选完成，筛选前:', beforeFilter, '筛选后:', candidates.length)
   }
+  
+  console.log('最终筛选结果数量:', filtered.length)
+  return filtered
+})
+
+// 分页后的候选人列表
+const paginatedCandidates = computed(() => {
+  const candidates = filteredCandidates.value
   
   // 更新总数
   pagination.total = candidates.length
-  console.log('最终筛选结果数量:', candidates.length)
   
   // 分页处理
   const start = (pagination.currentPage - 1) * pagination.pageSize
@@ -378,37 +293,54 @@ const handleEdit = (row) => {
 
 // 提交表单
 const submitForm = () => {
-  formRef.value.validate((valid) => {
+  formRef.value.validate(async (valid) => {
     if (valid) {
-      if (form.id) {
-        // 编辑候选人
-        const index = candidateStore.candidates.findIndex(c => c.id === form.id)
-        if (index !== -1) {
-          // 更新状态文本
-          form.statusText = getStatusTextByInterviewStatus(form.interviewStatus);
-          candidateStore.candidates[index] = { ...form }
+      try {
+        if (form.id) {
+          // 编辑候选人
+          const updatedData = {
+            fundId: form.fundId,
+            name: form.name,
+            position: form.position,
+            phone: form.phone,
+            email: form.email,
+            source: form.source,
+            education: form.education,
+            experience: form.experience,
+            expectedSalary: form.expectedSalary,
+            process: form.interviewStage,
+            interviewStatus: form.interviewStatus,
+            status: form.status
+          };
+          
+          await candidateStore.updateCandidate(form.id, updatedData);
+          ElMessage.success('编辑成功');
+        } else {
+          // 添加候选人
+          const newCandidate = {
+            fundId: form.fundId,
+            name: form.name,
+            position: form.position,
+            phone: form.phone,
+            email: form.email,
+            source: form.source,
+            education: form.education,
+            experience: form.experience,
+            expectedSalary: form.expectedSalary,
+            process: form.interviewStage,
+            interviewStatus: form.interviewStatus
+          };
+          
+          await candidateStore.addCandidate(newCandidate);
+          ElMessage.success('添加成功');
         }
-        ElMessage.success('编辑成功')
-      } else {
-        // 添加候选人
-        form.id = Date.now() // 简单生成ID
-        form.date = new Date().toLocaleDateString()
-        form.status = 'pending'
-        form.statusText = getStatusTextByInterviewStatus(form.interviewStatus)
-        form.process = form.interviewStage
-        
-        // 设置资金平台信息
-        const fund = funds.value.find(f => f.id === form.fundId)
-        if (fund) {
-          form.fundPlatform = fund.platform
-        }
-        
-        candidateStore.candidates.push({ ...form })
-        ElMessage.success('添加成功')
+        dialogVisible.value = false;
+      } catch (error) {
+        console.error('操作失败:', error);
+        ElMessage.error('操作失败: ' + (error.message || '未知错误'));
       }
-      dialogVisible.value = false
     }
-  })
+  });
 }
 
 // 根据面试状态获取状态文本
@@ -433,8 +365,6 @@ const resetForm = () => {
     phone: '',
     email: '',
     source: '',
-    interviewStage: 'invite',
-    interviewStatus: 'pending',
     education: '',
     experience: '',
     expectedSalary: ''
@@ -450,71 +380,83 @@ const handleCurrentChange = (val) => {
   pagination.currentPage = val
 }
 
-// 页面加载时获取数据
-const loadData = async () => {
-  try {
-    loading.value = true
-    await Promise.all([
-      candidateStore.fetchCandidates(),
-      fundStore.fetchFunds()
-    ])
-  } catch (error) {
-    console.error('加载数据失败:', error)
-    ElMessage.error('加载数据失败')
-  } finally {
-    loading.value = false
-  }
+// 标签页切换
+const handleTabChange = () => {
+  pagination.currentPage = 1
 }
 
-onMounted(() => {
-  loadData()
-})
+// 搜索
+const handleSearch = () => {
+  pagination.currentPage = 1
+}
 
+// 查看详情
+const handleViewDetail = (row) => {
+  router.push({ name: 'CandidateDetail', params: { id: row.id } })
+}
+
+// 删除候选人
+const handleDelete = (row) => {
+  ElMessageBox.confirm(
+    `确定要删除候选人"${row.name}"吗？`,
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      await candidateStore.deleteCandidate(row.id);
+      ElMessage.success('删除成功');
+    } catch (error) {
+      console.error('删除失败:', error);
+      ElMessage.error('删除失败: ' + (error.message || '未知错误'));
+    }
+  }).catch(() => {
+    // 取消删除
+  })
+}
+
+// 页面加载时获取数据
+onMounted(async () => {
+  console.log('开始获取候选人数据...')
+  loading.value = true
+  
+  try {
+    // 获取资金列表
+    console.log('开始获取资金数据...')
+    fundStore.fetchFunds()
+    
+    // 获取候选人列表
+    await candidateStore.fetchCandidates()
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    ElMessage.error('获取数据失败')
+  } finally {
+    loading.value = false
+    console.log('候选人数据获取完成')
+  }
+})
 </script>
 
 <style scoped>
-.candidate-list.full-screen {
-  height: calc(100vh - 84px);
+.candidate-list-container {
   padding: 20px;
-  box-sizing: border-box;
-}
-
-.full-height-card {
-  height: 100%;
-}
-
-.box-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
 }
 
-.header-title {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.status-filter {
-  margin: 20px 0;
-  padding: 15px 0;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.enlarged-table {
-  margin: 20px 0;
-  font-size: 16px;
-  width: 100%;
-}
-
-.pagination-bar {
-  margin-top: 20px;
+.header-actions {
   display: flex;
-  justify-content: center;
+  align-items: center;
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>

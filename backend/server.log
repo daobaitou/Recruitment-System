@@ -1,0 +1,9 @@
+nohup: ignoring input
+服务器运行在端口 3000
+Connected to MySQL server
+Database "recruitment_system" is ready
+Using database: recruitment_system
+Users table is ready
+Funds table is ready
+Candidates table is ready
+Default user is ready

@@ -198,7 +198,7 @@ exports.updateUserInfo = (req, res) => {
     
     res.json({
       code: 200,
-      message: '用户信息更新成功',
+      message: '更新用户信息成功',
       data: {
         id: user.id,
         name: user.name,

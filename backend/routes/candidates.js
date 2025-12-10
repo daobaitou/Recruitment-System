@@ -3,7 +3,7 @@ const router = express.Router();
 const candidateController = require('../controllers/candidateController');
 
 // 获取候选人列表
-router.get('/', candidateController.getCandidates);
+router.get('/', candidateController.getAllCandidates);
 
 // 获取候选人详情
 router.get('/:id', candidateController.getCandidateById);
