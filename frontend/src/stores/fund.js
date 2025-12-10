@@ -79,18 +79,32 @@ export const useFundStore = defineStore('fund', {
     async updateFund(fundData) {
       try {
         console.log('开始更新资金记录...', fundData)
-        const response = await fundApi.updateFund(fundData.id, fundData) // 修复方法调用
+        // 确保传递正确的ID参数
+        const response = await fundApi.updateFund(fundData.id, fundData)
         const updatedFund = response.data
+        
+        // 确保返回的数据结构正确
+        const formattedFund = {
+          id: updatedFund.id,
+          name: updatedFund.name,
+          platform: updatedFund.platform,
+          position: updatedFund.position,
+          recharge_by_name: updatedFund.recharge_by_name || fundData.rechargeByName,
+          amount: updatedFund.amount,
+          date: updatedFund.date,
+          status: updatedFund.status,
+          statusText: updatedFund.statusText
+        }
         
         // 更新本地状态
         const index = this.funds.findIndex(fund => fund.id === fundData.id)
         if (index !== -1) {
-          this.funds.splice(index, 1, updatedFund)
+          this.funds.splice(index, 1, formattedFund)
         }
         
-        console.log('成功更新资金记录:', updatedFund)
+        console.log('成功更新资金记录:', formattedFund)
         ElMessage.success('更新资金记录成功')
-        return updatedFund
+        return formattedFund
       } catch (error) {
         console.error('更新资金记录失败:', error)
         console.error('错误详情:', {

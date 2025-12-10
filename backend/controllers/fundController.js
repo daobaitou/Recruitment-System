@@ -1,11 +1,27 @@
 const { db } = require('../config/database');
 
+// 获取状态文本
+const getStatusText = (status) => {
+  switch (status) {
+    case 'unused':
+      return '未使用';
+    case 'using':
+      return '使用中';
+    case 'used':
+      return '已用完';
+    case 'expired':
+      return '已过期';
+    default:
+      return '未知';
+  }
+};
+
 // 获取所有资金记录
 exports.getFunds = (req, res) => {
   db.query(`
       SELECT 
         f.*,
-        u.name as recharge_by_name,
+        COALESCE(f.recharge_by_name, u.name) as recharge_by_name_display,
         CASE 
           WHEN f.status = 'unused' THEN '未使用'
           WHEN f.status = 'using' THEN '使用中'
@@ -21,6 +37,7 @@ exports.getFunds = (req, res) => {
       // 添加状态文本映射
       const fundsWithStatusText = results.map(fund => ({
         ...fund,
+        recharge_by_name: fund.recharge_by_name_display, // 使用显示字段
         statusText: fund.status_text
       }));
       
@@ -89,8 +106,10 @@ exports.getFundById = (req, res) => {
 };
 
 // 创建资金
+// （注意：createFund 方法中也使用了 getStatusText，但原代码中直接调用该函数，
+// 因此需要确保在 createFund 使用前已定义该函数）
 exports.createFund = (req, res) => {
-  const { name, platform, position, salaryRange, rechargeByName, amount, date } = req.body;
+  const { name, platform, position, salaryRange, rechargeByName, amount, date, status } = req.body;
   
   // 验证必填字段
   if (!name || !platform || !position) {
@@ -108,7 +127,7 @@ exports.createFund = (req, res) => {
     recharge_by_name: rechargeByName || '',
     amount: amount || 0,
     date: date || new Date().toISOString().split('T')[0],
-    status: 'unused' // 默认状态为未使用
+    status: status || 'unused' // 默认状态为未使用
   };
   
   db.query('INSERT INTO funds SET ?', fundData)
@@ -116,7 +135,7 @@ exports.createFund = (req, res) => {
       const newFund = {
         id: result.insertId,
         ...fundData,
-        statusText: '未使用' // 添加状态文本
+        statusText: getStatusText(fundData.status) // 添加状态文本
       };
       
       res.json({
@@ -137,7 +156,7 @@ exports.createFund = (req, res) => {
 // 更新资金
 exports.updateFund = (req, res) => {
   const fundId = req.params.id;
-  const { name, platform, position, salaryRange, rechargeByName, amount, date } = req.body;
+  const { name, platform, position, salaryRange, rechargeByName, amount, date, status } = req.body;
 
   // 验证必填字段
   if (!name || !platform || !position) {
@@ -154,7 +173,8 @@ exports.updateFund = (req, res) => {
     salary_range: salaryRange || '',
     recharge_by_name: rechargeByName || '',
     amount: amount || 0,
-    date: date || new Date().toISOString().split('T')[0]
+    date: date || new Date().toISOString().split('T')[0],
+    status: status || 'unused'
   };
 
   db.query('UPDATE funds SET ? WHERE id = ?', [fundData, fundId])
@@ -166,29 +186,28 @@ exports.updateFund = (req, res) => {
         });
       }
 
-      // 添加状态文本映射
-      let statusText = '';
-      switch (fundData.status) {
-        case 'unused':
-          statusText = '未使用';
-          break;
-        case 'using':
-          statusText = '使用中';
-          break;
-        case 'used':
-          statusText = '已用完';
-          break;
-        case 'expired':
-          statusText = '已过期';
-          break;
-        default:
-          statusText = '未知';
+      // 查询更新后的完整记录
+      return db.query('SELECT * FROM funds WHERE id = ?', [fundId]);
+    })
+    .then(([results]) => {
+      if (results.length === 0) {
+        return res.status(404).json({
+          code: 404,
+          message: '未找到指定的资金'
+        });
       }
 
+      const fund = results[0];
       const updatedFund = {
-        id: fundId,
-        ...fundData,
-        statusText
+        id: fund.id,
+        name: fund.name,
+        platform: fund.platform,
+        position: fund.position,
+        recharge_by_name: fund.recharge_by_name,
+        amount: fund.amount,
+        date: fund.date,
+        status: fund.status,
+        statusText: getStatusText(fund.status)
       };
 
       res.json({
@@ -201,7 +220,7 @@ exports.updateFund = (req, res) => {
       console.error('更新资金错误:', err);
       return res.status(500).json({
         code: 500,
-        message: '更新资金失败'
+        message: '更新资金失败: ' + err.message
       });
     });
 };

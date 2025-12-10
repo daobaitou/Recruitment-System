@@ -3,50 +3,37 @@
     <el-card class="fund-list-card">
       <template #header>
         <div class="card-header">
-          <span>充值记录</span>
-          <div class="header-actions">
-            <el-button type="primary" size="large" @click="handleAddFund" style="margin-left: auto">添加资金</el-button>
-          </div>
+          <span>资金列表</span>
+          <el-button type="primary" size="large" @click="handleAddFund">
+            添加资金
+          </el-button>
         </div>
       </template>
       
       <el-table 
         :data="funds" 
-        style="width: 100%" 
-        v-loading="loading" 
-        :cell-style="{ padding: '15px 0' }" 
-        :header-cell-style="{ padding: '15px 0', fontWeight: 'bold' }"
-        :row-style="{ height: '60px' }"
-        :header-row-style="{ height: '60px' }"
+        v-loading="loading"
+        element-loading-text="加载中..."
+        border
+        stripe
+        style="width: 100%"
       >
-        <el-table-column prop="name" label="资金名称" min-width="150">
-          <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.name }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="platform" label="平台" min-width="150">
-          <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.platform }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="position" label="招聘岗位" min-width="180">
-          <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.position }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="recharge_by_name" label="充值人" min-width="120">
-          <template #default="scope">
-            <span style="font-size: 16px;">{{ scope.row.recharge_by_name || '未知' }}</span>
+        <el-table-column prop="name" label="资金名称" min-width="150" align="center" />
+        <el-table-column prop="platform" label="平台" min-width="120" align="center" />
+        <el-table-column prop="position" label="招聘岗位" min-width="150" align="center" />
+        <el-table-column prop="recharge_by_name" label="充值人" min-width="120" align="center">
+          <template #default="{ row }">
+            <span>{{ row.recharge_by_name || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="amount" label="金额" min-width="120" align="center">
-          <template #default="scope">
-            <span style="font-size: 18px; font-weight: bold; color: #409eff">¥{{ scope.row.amount }}</span>
+          <template #default="{ row }">
+            ¥{{ formatCurrency(row.amount) }}
           </template>
         </el-table-column>
-        <el-table-column prop="date" label="日期" min-width="140" align="center">
-          <template #default="scope">
-            <span style="font-size: 16px;">{{ formatDate(scope.row.date) }}</span>
+        <el-table-column prop="date" label="日期" min-width="120" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.date) }}
           </template>
         </el-table-column>
         <el-table-column prop="statusText" label="状态" min-width="120" align="center">
@@ -146,14 +133,19 @@ const form = reactive({
   position: '',
   rechargeByName: '',
   amount: '',
-  date: ''
+  date: '',
+  status: 'unused'
 })
 
 // 表单验证规则
 const rules = {
   name: [{ required: true, message: '请输入资金名称', trigger: 'blur' }],
   platform: [{ required: true, message: '请输入平台', trigger: 'blur' }],
-  position: [{ required: true, message: '请输入招聘岗位', trigger: 'blur' }]
+  position: [{ required: true, message: '请输入招聘岗位', trigger: 'blur' }],
+  rechargeByName: [{ required: true, message: '请输入充值人姓名', trigger: 'blur' }],
+  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
+  date: [{ required: true, message: '请选择日期', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }]
 }
 
 // 表单引用
@@ -190,15 +182,14 @@ const viewFundDetail = (fund) => {
 
 // 重置表单
 const resetForm = () => {
-  Object.assign(form, {
-    id: null,
-    name: '',
-    platform: '',
-    position: '',
-    rechargeByName: '',
-    amount: '',
-    date: ''
-  })
+  form.id = null
+  form.name = ''
+  form.platform = ''
+  form.position = ''
+  form.rechargeByName = ''
+  form.amount = ''
+  form.date = ''
+  form.status = 'unused'
 }
 
 // 添加资金
@@ -221,7 +212,8 @@ const handleEditFund = (fund) => {
     position: fund.position,
     rechargeByName: fund.recharge_by_name,
     amount: fund.amount,
-    date: fund.date ? fund.date.split('T')[0] : '' // 格式化日期
+    date: fund.date ? fund.date.split('T')[0] : '', // 格式化日期
+    status: fund.status || 'unused'
   })
   dialogVisible.value = true
 }
@@ -237,12 +229,13 @@ const submitForm = async () => {
       position: form.position,
       rechargeByName: form.rechargeByName,
       amount: form.amount,
-      date: form.date
+      date: form.date,
+      status: form.status
     }
     
     if (isEdit.value) {
-      // 编辑资金
-      await fundStore.updateFund(form.id, fundData)
+      // 编辑资金，确保传递ID
+      await fundStore.updateFund({...fundData, id: form.id})
       ElMessage.success('资金更新成功')
     } else {
       // 添加资金
@@ -260,8 +253,18 @@ const submitForm = async () => {
 
 // 格式化日期
 const formatDate = (dateString) => {
+  if (!dateString) return ''
   const date = new Date(dateString)
   return date.toLocaleDateString('zh-CN')
+}
+
+// 格式化货币
+const formatCurrency = (amount) => {
+  if (!amount) return '0.00'
+  return new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount)
 }
 
 // 加载资金列表
