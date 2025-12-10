@@ -3,104 +3,89 @@ import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: 'http://localhost:3000/api', // 真实的后端服务地址
-  timeout: 15000 // 增加请求超时时间到15秒，以更好地处理慢速网络或耗时较长的请求
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  timeout: 10000, // 设置请求超时时间为10秒
+  headers: { 'Content-Type': 'application/json' }
 })
 
 // 请求拦截器
 service.interceptors.request.use(
-  config => {
-    // 在发送请求之前做些什么
-    // 从 localStorage 中获取 token
+  (config) => {
+    // 从localStorage获取token
     const token = localStorage.getItem('token')
     if (token) {
-      // 在请求头中添加 token
-      config.headers['Authorization'] = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  error => {
-    // 对请求错误做些什么
-    console.log(error)
+  (error) => {
+    console.error('请求拦截器错误:', error)
     return Promise.reject(error)
   }
 )
 
 // 响应拦截器
 service.interceptors.response.use(
-  response => {
-    // 对响应数据做点什么
-    const res = response.data
+  (response) => {
+    const { code, data, message } = response.data
     
-    // 如果返回的状态码不是200，则判断为错误
-    if (res.code !== 200) {
+    // 根据code判断是否成功
+    if (code === 200) {
+      return data
+    } else {
+      // 处理业务错误
       ElMessage({
-        message: res.message || 'Error',
+        message: message || '请求失败',
         type: 'error',
         duration: 5 * 1000
       })
       
       // 如果状态码是 401，说明 token 过期或者无效
-      if (res.code === 401) {
+      if (code === 401) {
         // 清除 token
         localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
         // 跳转到登录页
         window.location.href = '/login'
       }
       
-      return Promise.reject(new Error(res.message || 'Error'))
-    } else {
-      return res
+      const error = new Error(message || '请求失败')
+      error.response = response
+      throw error
     }
   },
-  error => {
-    // 对响应错误做点什么
-    console.log('err' + error) // for debug
-    if (error.response && error.response.status) {
-      switch (error.response.status) {
+  (error) => {
+    console.error('响应拦截器错误:', error)
+    
+    // 处理HTTP错误状态码
+    if (error.response) {
+      const { status, data } = error.response
+      let errorMessage = ''
+      switch (status) {
         case 401:
-          // 未授权，跳转到登录页
-          ElMessage({
-            message: '未授权，请重新登录',
-            type: 'error',
-            duration: 5 * 1000
-          })
-          // 清除token并跳转到登录页
+          // 未授权，清除token并跳转到登录页
+          errorMessage = '未授权，请重新登录'
           localStorage.removeItem('token')
           localStorage.removeItem('userInfo')
           window.location.href = '/login'
           break
         case 403:
-          // 禁止访问
-          ElMessage({
-            message: '拒绝访问',
-            type: 'error',
-            duration: 5 * 1000
-          })
+          errorMessage = '权限不足'
           break
         case 404:
-          // 页面不存在
-          ElMessage({
-            message: '请求地址出错',
-            type: 'error',
-            duration: 5 * 1000
-          })
+          errorMessage = '请求的资源不存在'
           break
         case 500:
-          // 服务器内部错误
-          ElMessage({
-            message: '服务器错误',
-            type: 'error',
-            duration: 5 * 1000
-          })
+          errorMessage = '服务器内部错误'
           break
         default:
-          ElMessage({
-            message: error.response.data.message || '未知错误',
-            type: 'error',
-            duration: 5 * 1000
-          })
+          errorMessage = `请求失败: ${status}`
       }
+      ElMessage({
+        message: data?.message || errorMessage,
+        type: 'error',
+        duration: 5 * 1000
+      })
     } else if (error.code === 'ECONNABORTED') {
       // 请求超时
       ElMessage({
@@ -108,10 +93,17 @@ service.interceptors.response.use(
         type: 'error',
         duration: 5 * 1000
       })
+    } else if (error.request) {
+      // 网络错误
+      ElMessage({
+        message: '网络错误，请检查网络连接',
+        type: 'error',
+        duration: 5 * 1000
+      })
     } else {
       // 其他错误
       ElMessage({
-        message: '网络错误，请检查网络连接',
+        message: '请求异常',
         type: 'error',
         duration: 5 * 1000
       })

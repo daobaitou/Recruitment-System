@@ -231,12 +231,14 @@ const submitForm = () => {
           ...(form.round === 'first-interview' && {
             firstInterviewDate: form.date,
             firstInterviewTime: form.time,
-            firstInterviewLocation: form.location
+            firstInterviewLocation: form.location,
+            firstInterviewer: form.interviewer // 添加面试官字段
           }),
           ...(form.round === 'second-interview' && {
             secondInterviewDate: form.date,
             secondInterviewTime: form.time,
-            secondInterviewLocation: form.location
+            secondInterviewLocation: form.location,
+            secondInterviewer: form.interviewer // 添加面试官字段
           }),
           scheduleRemarks: form.description // 安排面试时的备注
         }
@@ -244,7 +246,10 @@ const submitForm = () => {
         await candidateStore.updateCandidate(form.candidateId, updateData)
         
         ElMessage.success('面试安排成功')
-        router.push({ name: 'CandidateDetail', params: { id: form.candidateId } })
+        router.push({ 
+          name: 'CandidateDetail', 
+          query: { candidateId: form.candidateId } 
+        })
       } catch (error) {
         console.error('安排面试失败:', error)
         ElMessage.error('安排面试失败: ' + (error.response?.data?.message || error.message))

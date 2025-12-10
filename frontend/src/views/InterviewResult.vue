@@ -169,11 +169,12 @@ const getInterviewStageText = (stage) => {
 
 // 返回上一页
 const goBack = () => {
-  router.go(-1)
+  // 修复路由跳转参数
+  router.push({ name: 'CandidateDetail', params: { id: route.params.id } })
 }
 
 // 提交表单
-const submitForm = async () => {
+const submitForm = () => {
   formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
@@ -182,25 +183,42 @@ const submitForm = async () => {
         const interviewData = {
           candidateId: form.candidateId,
           round: form.round,
-          title: `${form.round === 'first-interview' ? '一面' : '二面'}-${form.candidateName}`,
-          description: form.notes,
+          title: form.title,
+          description: form.description,
           interviewer: form.interviewer,
           date: form.date,
           time: form.time,
           location: form.location,
-          status: 'completed',
+          status: form.status,
           feedback: form.feedback,
           rating: form.rating
         }
         
         await interviewStore.createInterview(interviewData)
         
-        // 更新候选人状态为已完成
-        const updateData = {
+        // 准备更新候选人的数据
+        const candidateUpdateData = {
           interview_status: 'completed'
         }
         
-        await candidateStore.updateCandidate(form.candidateId, updateData)
+        // 根据面试轮次更新对应的面试结果字段
+        if (form.round === 'first-interview') {
+          candidateUpdateData.first_interview_result = form.feedback
+          candidateUpdateData.first_interviewer = form.interviewer
+        } else if (form.round === 'second-interview') {
+          candidateUpdateData.second_interview_result = form.feedback
+          candidateUpdateData.second_interviewer = form.interviewer
+        } else {
+          // 对于其他类型的面试（三面、HR面、终面），更新最终面试结果
+          candidateUpdateData.final_interview_result = form.feedback
+          // 如果是终面，同时更新最终评价
+          if (form.round === 'final-interview') {
+            candidateUpdateData.final_evaluation = form.feedback
+          }
+        }
+        
+        // 更新候选人信息
+        await candidateStore.updateCandidate(form.candidateId, candidateUpdateData)
         
         ElMessage.success('面试结果处理成功')
         router.push({ name: 'CandidateDetail', params: { id: form.candidateId } })
@@ -216,11 +234,23 @@ const submitForm = async () => {
 
 // 页面加载时获取候选人详情
 onMounted(async () => {
-  const candidateId = route.params.id
+  // 注意：这里的route.params.id实际上是面试ID，不是候选人ID
+  const interviewId = route.params.id
   
-  if (candidateId) {
+  if (interviewId) {
     try {
-      // 获取候选人信息
+      // 先获取面试信息
+      await interviewStore.fetchInterviewById(interviewId)
+      const interview = interviewStore.currentInterview
+      
+      if (!interview) {
+        ElMessage.error('面试信息不存在')
+        router.push({ name: 'CandidateList' })
+        return
+      }
+      
+      // 再通过面试信息获取候选人信息
+      const candidateId = interview.candidateId
       await candidateStore.fetchCandidateById(candidateId)
       
       // 根据候选人的面试阶段预填充表单
@@ -232,24 +262,37 @@ onMounted(async () => {
         // 根据面试阶段预填充面试信息
         if (candidate.value.process === 'first-interview') {
           form.round = 'first-interview'
-          form.interviewer = '' // 面试官需要手动填写
+          form.interviewer = candidate.value.firstInterviewer || '' // 使用一面面试官
           form.date = candidate.value.firstInterviewDate || ''
           form.time = candidate.value.firstInterviewTime || ''
           form.location = candidate.value.firstInterviewLocation || ''
         } else if (candidate.value.process === 'second-interview') {
           form.round = 'second-interview'
-          form.interviewer = '' // 面试官需要手动填写
+          form.interviewer = candidate.value.secondInterviewer || '' // 使用二面面试官
           form.date = candidate.value.secondInterviewDate || ''
           form.time = candidate.value.secondInterviewTime || ''
           form.location = candidate.value.secondInterviewLocation || ''
+        } else {
+          // 默认设置
+          form.round = interview.round || 'first-interview'
+          form.interviewer = interview.interviewer || ''
+          form.date = interview.date || ''
+          form.time = interview.time || ''
+          form.location = interview.location || ''
         }
         
         // 设置默认标题
-        form.title = `面试-${candidate.value.name}`
+        form.title = interview.title || `面试-${candidate.value.name}`
+        
+        // 预填充已有面试信息
+        form.description = interview.description || ''
+        form.status = interview.status || 'completed'
+        form.feedback = interview.feedback || ''
+        form.rating = interview.rating || 0
       }
     } catch (error) {
       console.error('加载候选人信息失败:', error)
-      ElMessage.error('候选人信息加载失败')
+      ElMessage.error('候选人信息加载失败: ' + (error.response?.data?.message || error.message))
       router.push({ name: 'CandidateList' })
     }
   }

@@ -34,10 +34,16 @@ exports.getAllCandidates = (req, res) => {
       firstInterviewTime: candidate.first_interview_time,
       firstInterviewLocation: candidate.first_interview_location,
       firstInterviewNotes: candidate.first_interview_notes,
+      firstInterviewer: candidate.first_interviewer || '',
+      firstInterviewResult: candidate.first_interview_result || '',
       secondInterviewDate: candidate.second_interview_date,
       secondInterviewTime: candidate.second_interview_time,
       secondInterviewLocation: candidate.second_interview_location,
       secondInterviewNotes: candidate.second_interview_notes,
+      secondInterviewer: candidate.second_interviewer || '',
+      secondInterviewResult: candidate.second_interview_result || '',
+      finalInterviewResult: candidate.final_interview_result || '',
+      finalEvaluation: candidate.final_evaluation || '',
       scheduleRemarks: candidate.schedule_remarks,
       createdAt: candidate.created_at
     }));
@@ -92,10 +98,16 @@ exports.getCandidateById = (req, res) => {
       firstInterviewTime: candidate.first_interview_time,
       firstInterviewLocation: candidate.first_interview_location,
       firstInterviewNotes: candidate.first_interview_notes,
+      firstInterviewer: candidate.first_interviewer || '',
+      firstInterviewResult: candidate.first_interview_result || '',
       secondInterviewDate: candidate.second_interview_date,
       secondInterviewTime: candidate.second_interview_time,
       secondInterviewLocation: candidate.second_interview_location,
       secondInterviewNotes: candidate.second_interview_notes,
+      secondInterviewer: candidate.second_interviewer || '',
+      secondInterviewResult: candidate.second_interview_result || '',
+      finalInterviewResult: candidate.final_interview_result || '',
+      finalEvaluation: candidate.final_evaluation || '',
       scheduleRemarks: candidate.schedule_remarks,
       createdAt: candidate.created_at
     };
@@ -110,7 +122,32 @@ exports.getCandidateById = (req, res) => {
 
 // 创建候选人
 exports.createCandidate = (req, res) => {
-  const { fundId, name, position, phone, email, source, education, experience, expectedSalary, process, interviewStatus } = req.body;
+  // 从请求体中提取参数
+  const {
+    fundId,
+    name,
+    position,
+    phone,
+    email,
+    source,
+    education,
+    experience,
+    expectedSalary,
+    process,
+    status,
+    interviewStatus,
+    firstInterviewDate,
+    firstInterviewTime,
+    firstInterviewLocation,
+    firstInterviewNotes,
+    firstInterviewer, // 新增字段
+    secondInterviewDate,
+    secondInterviewTime,
+    secondInterviewLocation,
+    secondInterviewNotes,
+    secondInterviewer, // 新增字段
+    scheduleRemarks
+  } = req.body;
   
   console.log('收到创建候选人请求:', req.body);
 
@@ -136,7 +173,13 @@ exports.createCandidate = (req, res) => {
     expected_salary: expectedSalary || '',
     process: process || 'invite', // 默认为邀约阶段
     status: 'pending',
-    interview_status: interviewStatus || 'pending' // 默认为待约状态
+    interview_status: interviewStatus || 'pending', // 默认为待约状态
+    first_interviewer: firstInterviewer || '',
+    second_interviewer: secondInterviewer || '',
+    first_interview_result: firstInterviewResult || '',
+    second_interview_result: secondInterviewResult || '',
+    final_interview_result: finalInterviewResult || '',
+    final_evaluation: finalEvaluation || ''
   };
   
   console.log('准备创建候选人对象:', newCandidate);
@@ -173,10 +216,12 @@ exports.createCandidate = (req, res) => {
       firstInterviewTime: candidate.first_interview_time,
       firstInterviewLocation: candidate.first_interview_location,
       firstInterviewNotes: candidate.first_interview_notes,
+      firstInterviewer: candidate.first_interviewer || '',
       secondInterviewDate: candidate.second_interview_date,
       secondInterviewTime: candidate.second_interview_time,
       secondInterviewLocation: candidate.second_interview_location,
       secondInterviewNotes: candidate.second_interview_notes,
+      secondInterviewer: candidate.second_interviewer || '',
       scheduleRemarks: candidate.schedule_remarks,
       createdAt: candidate.created_at
     };
@@ -193,8 +238,9 @@ exports.createCandidate = (req, res) => {
 exports.updateCandidate = (req, res) => {
   const { id } = req.params;
   const { fundId, name, position, phone, email, source, education, experience, expectedSalary, process, status, interviewStatus,
-    firstInterviewDate, firstInterviewTime, firstInterviewLocation, firstInterviewNotes,
-    secondInterviewDate, secondInterviewTime, secondInterviewLocation, secondInterviewNotes,
+    firstInterviewDate, firstInterviewTime, firstInterviewLocation, firstInterviewNotes, firstInterviewer, firstInterviewResult,
+    secondInterviewDate, secondInterviewTime, secondInterviewLocation, secondInterviewNotes, secondInterviewer, secondInterviewResult,
+    finalInterviewResult, finalEvaluation,
     scheduleRemarks } = req.body;
 
   // 创建候选人对象（只包含实际提供的字段）
@@ -219,10 +265,16 @@ exports.updateCandidate = (req, res) => {
   if (firstInterviewTime !== undefined) candidate.first_interview_time = firstInterviewTime;
   if (firstInterviewLocation !== undefined) candidate.first_interview_location = firstInterviewLocation;
   if (firstInterviewNotes !== undefined) candidate.first_interview_notes = firstInterviewNotes;
+  if (firstInterviewer !== undefined) candidate.first_interviewer = firstInterviewer;
+  if (firstInterviewResult !== undefined) candidate.first_interview_result = firstInterviewResult;
   if (secondInterviewDate !== undefined) candidate.second_interview_date = secondInterviewDate;
   if (secondInterviewTime !== undefined) candidate.second_interview_time = secondInterviewTime;
   if (secondInterviewLocation !== undefined) candidate.second_interview_location = secondInterviewLocation;
   if (secondInterviewNotes !== undefined) candidate.second_interview_notes = secondInterviewNotes;
+  if (secondInterviewer !== undefined) candidate.second_interviewer = secondInterviewer;
+  if (secondInterviewResult !== undefined) candidate.second_interview_result = secondInterviewResult;
+  if (finalInterviewResult !== undefined) candidate.final_interview_result = finalInterviewResult;
+  if (finalEvaluation !== undefined) candidate.final_evaluation = finalEvaluation;
   if (scheduleRemarks !== undefined) candidate.schedule_remarks = scheduleRemarks;
   
   // 确保必填字段有默认值
@@ -269,10 +321,16 @@ exports.updateCandidate = (req, res) => {
       firstInterviewTime: updatedCandidate.first_interview_time,
       firstInterviewLocation: updatedCandidate.first_interview_location,
       firstInterviewNotes: updatedCandidate.first_interview_notes,
+      firstInterviewer: updatedCandidate.first_interviewer || '',
+      firstInterviewResult: updatedCandidate.first_interview_result || '',
       secondInterviewDate: updatedCandidate.second_interview_date,
       secondInterviewTime: updatedCandidate.second_interview_time,
       secondInterviewLocation: updatedCandidate.second_interview_location,
       secondInterviewNotes: updatedCandidate.second_interview_notes,
+      secondInterviewer: updatedCandidate.second_interviewer || '',
+      secondInterviewResult: updatedCandidate.second_interview_result || '',
+      finalInterviewResult: updatedCandidate.final_interview_result || '',
+      finalEvaluation: updatedCandidate.final_evaluation || '',
       scheduleRemarks: updatedCandidate.schedule_remarks,
       createdAt: updatedCandidate.created_at
     };

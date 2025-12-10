@@ -96,6 +96,66 @@ async function initializeDatabase() {
     
     console.log('Candidates table is ready');
     
+    // 检查并添加一面面试官字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN first_interviewer VARCHAR(100) NULL");
+      console.log('Added first_interviewer column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding first_interviewer column:', error);
+      }
+    }
+    
+    // 检查并添加二面面试官字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN second_interviewer VARCHAR(100) NULL");
+      console.log('Added second_interviewer column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding second_interviewer column:', error);
+      }
+    }
+    
+    // 检查并添加一面结果字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN first_interview_result TEXT NULL");
+      console.log('Added first_interview_result column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding first_interview_result column:', error);
+      }
+    }
+    
+    // 检查并添加二面结果字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN second_interview_result TEXT NULL");
+      console.log('Added second_interview_result column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding second_interview_result column:', error);
+      }
+    }
+    
+    // 检查并添加最终面试结果字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN final_interview_result TEXT NULL");
+      console.log('Added final_interview_result column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding final_interview_result column:', error);
+      }
+    }
+    
+    // 检查并添加最终评价字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN final_evaluation TEXT NULL");
+      console.log('Added final_evaluation column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding final_evaluation column:', error);
+      }
+    }
+    
     // 创建面试表
     await db.query(`
       CREATE TABLE IF NOT EXISTS interviews (

@@ -52,6 +52,12 @@
             <el-descriptions-item label="学历">{{ candidate.education }}</el-descriptions-item>
             <el-descriptions-item label="工作经验">{{ candidate.experience }}</el-descriptions-item>
             <el-descriptions-item label="期望薪资">{{ candidate.expectedSalary }}</el-descriptions-item>
+            <el-descriptions-item label="一面面试官">{{ candidate.firstInterviewer || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="一面结果">{{ candidate.firstInterviewResult || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="二面面试官">{{ candidate.secondInterviewer || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="二面结果">{{ candidate.secondInterviewResult || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="最终面试结果">{{ candidate.finalInterviewResult || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="最终评价">{{ candidate.finalEvaluation || '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
         
@@ -81,10 +87,30 @@
               }}
             </template>
           </el-table-column>
-          <el-table-column prop="interviewer" label="面试官" width="120"></el-table-column>
-          <el-table-column prop="date" label="面试日期" width="120"></el-table-column>
-          <el-table-column prop="time" label="面试时间" width="100"></el-table-column>
-          <el-table-column prop="location" label="面试地点" width="150"></el-table-column>
+          <el-table-column prop="interviewer" label="面试官" width="120">
+            <template #default="scope">
+              <span v-if="scope.row.interviewer">{{ scope.row.interviewer }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="date" label="面试日期" width="120">
+            <template #default="scope">
+              <span v-if="scope.row.date">{{ scope.row.date }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="time" label="面试时间" width="100">
+            <template #default="scope">
+              <span v-if="scope.row.time">{{ scope.row.time }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="location" label="面试地点" width="150">
+            <template #default="scope">
+              <span v-if="scope.row.location">{{ scope.row.location }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
               <el-tag :type="getInterviewStatusType(scope.row.status)">
@@ -110,7 +136,6 @@
                 size="small" 
                 type="primary" 
                 @click="handleViewInterview(scope.row)"
-                :disabled="scope.row.status === 'scheduled'"
               >
                 查看详情
               </el-button>
@@ -180,13 +205,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCandidateStore } from '@/stores/candidate'
 import { useFundStore } from '@/stores/fund'
-import { useInterviewStore } from '@/stores/interview'
 
 const route = useRoute()
 const router = useRouter()
 const candidateStore = useCandidateStore()
 const fundStore = useFundStore()
-const interviewStore = useInterviewStore()
 
 const dialogVisible = ref(false)
 const loading = ref(false)
@@ -259,7 +282,7 @@ const handleProcessInterview = () => {
   // 跳转到面试结果处理页面
   router.push({ 
     name: 'InterviewResult', 
-    params: { candidateId: candidate.value.id } 
+    params: { id: candidate.value.id } 
   })
 }
 
@@ -404,7 +427,61 @@ const loadInterviewRecords = async () => {
   if (!candidate.value) return
   
   try {
-    interviewRecords.value = await interviewStore.fetchInterviewsByCandidateId(candidate.value.id)
+    // 不再从interviews表获取数据，而是直接从candidates表中构造面试记录
+    const records = []
+    
+    // 构造一面记录（如果有）
+    if (candidate.value.firstInterviewDate || candidate.value.firstInterviewTime) {
+      records.push({
+        id: `${candidate.value.id}-first`, // 构造一个虚拟ID
+        candidateId: candidate.value.id,
+        round: 'first-interview',
+        title: `一面-${candidate.value.name}`,
+        interviewer: candidate.value.firstInterviewer || '',
+        date: candidate.value.firstInterviewDate || '',
+        time: candidate.value.firstInterviewTime || '',
+        location: candidate.value.firstInterviewLocation || '',
+        status: candidate.value.firstInterviewDate ? 'completed' : 'scheduled',
+        feedback: candidate.value.firstInterviewResult || '',
+        rating: 0 // 评分信息在candidates表中没有存储
+      })
+    }
+    
+    // 构造二面记录（如果有）
+    if (candidate.value.secondInterviewDate || candidate.value.secondInterviewTime) {
+      records.push({
+        id: `${candidate.value.id}-second`, // 构造一个虚拟ID
+        candidateId: candidate.value.id,
+        round: 'second-interview',
+        title: `二面-${candidate.value.name}`,
+        interviewer: candidate.value.secondInterviewer || '',
+        date: candidate.value.secondInterviewDate || '',
+        time: candidate.value.secondInterviewTime || '',
+        location: candidate.value.secondInterviewLocation || '',
+        status: candidate.value.secondInterviewDate ? 'completed' : 'scheduled',
+        feedback: candidate.value.secondInterviewResult || '',
+        rating: 0 // 评分信息在candidates表中没有存储
+      })
+    }
+    
+    // 构造最终面试记录（如果有）
+    if (candidate.value.finalInterviewResult) {
+      records.push({
+        id: `${candidate.value.id}-final`, // 构造一个虚拟ID
+        candidateId: candidate.value.id,
+        round: 'final-interview',
+        title: `最终面试-${candidate.value.name}`,
+        interviewer: '', // 最终面试官信息在candidates表中没有存储
+        date: '', // 最终面试日期信息在candidates表中没有存储
+        time: '', // 最终面试时间信息在candidates表中没有存储
+        location: '', // 最终面试地点信息在candidates表中没有存储
+        status: 'completed',
+        feedback: candidate.value.finalInterviewResult || '',
+        rating: 0 // 评分信息在candidates表中没有存储
+      })
+    }
+    
+    interviewRecords.value = records
   } catch (error) {
     ElMessage.error('加载面试记录失败')
   }
@@ -425,6 +502,35 @@ const submitForm = () => {
       }
       dialogVisible.value = false
     }
+  })
+}
+
+// 查看面试详情
+const handleViewInterview = (interview) => {
+  // 不再跳转到面试结果页面，而是直接显示面试结果信息
+  ElMessageBox.alert(`
+    <strong>面试轮次:</strong> ${
+      interview.round === 'first-interview' ? '一面' :
+      interview.round === 'second-interview' ? '二面' :
+      interview.round === 'third-interview' ? '三面' :
+      interview.round === 'hr-interview' ? 'HR面' :
+      interview.round === 'final-interview' ? '终面' : interview.round
+    }<br><br>
+    
+    <strong>面试官:</strong> ${interview.interviewer || '-'}<br><br>
+    
+    <strong>面试日期:</strong> ${interview.date || '-'}<br><br>
+    
+    <strong>面试时间:</strong> ${interview.time || '-'}<br><br>
+    
+    <strong>面试地点:</strong> ${interview.location || '-'}<br><br>
+    
+    <strong>面试反馈:</strong><br> ${interview.feedback || '无'}<br><br>
+    
+    <strong>评分:</strong> ${interview.rating > 0 ? `${interview.rating}/5` : '-'}
+  `, '面试详情', {
+    dangerouslyUseHTMLString: true,
+    confirmButtonText: '确定'
   })
 }
 

@@ -128,7 +128,7 @@ exports.getInterviewsByCandidateId = (req, res) => {
 exports.createInterview = [
   // 验证字段
   body('candidateId').isInt().withMessage('候选人ID必须是整数'),
-  body('round').notEmpty().withMessage('面试轮次不能为空'),
+  body('round').isIn(['first-interview', 'second-interview', 'third-interview', 'hr-interview', 'final-interview']).withMessage('面试轮次值不正确'),
   body('title').notEmpty().withMessage('标题不能为空'),
   body('interviewer').notEmpty().withMessage('面试官不能为空'),
   body('date').isISO8601().withMessage('日期格式不正确'),
@@ -158,7 +158,7 @@ exports.createInterview = [
       title: title,
       description: description || '',
       interviewer: interviewer,
-      date: date,
+      date: date.split('T')[0], // 修复日期格式问题，只取日期部分
       time: time,
       location: location,
       status: status || 'scheduled',
@@ -199,9 +199,9 @@ exports.createInterview = [
 
       console.log("面试记录创建成功:", formattedInterview);
       
-      res.status(201).json({
+      res.json({
         code: 200,
-        message: '创建面试记录成功',
+        message: '面试记录创建成功',
         data: formattedInterview
       });
     });

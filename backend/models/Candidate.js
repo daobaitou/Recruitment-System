@@ -19,10 +19,16 @@ class Candidate {
     this.first_interview_time = candidate.first_interview_time;
     this.first_interview_location = candidate.first_interview_location;
     this.first_interview_notes = candidate.first_interview_notes;
+    this.first_interviewer = candidate.first_interviewer; // 新增字段
+    this.first_interview_result = candidate.first_interview_result; // 新增字段
     this.second_interview_date = candidate.second_interview_date;
     this.second_interview_time = candidate.second_interview_time;
     this.second_interview_location = candidate.second_interview_location;
     this.second_interview_notes = candidate.second_interview_notes;
+    this.second_interviewer = candidate.second_interviewer; // 新增字段
+    this.second_interview_result = candidate.second_interview_result; // 新增字段
+    this.final_interview_result = candidate.final_interview_result; // 新增字段
+    this.final_evaluation = candidate.final_evaluation; // 新增字段
     this.schedule_remarks = candidate.schedule_remarks;
     this.created_at = candidate.created_at;
   }
