@@ -57,7 +57,7 @@ exports.getAllCandidates = (req, res) => {
       householdRegistrationAddress: candidate.household_registration_address
     }));
 
-    res.json({
+    res.send({
       code: 200,
       message: '获取候选人列表成功',
       data: formattedCandidates
@@ -132,7 +132,7 @@ exports.getCandidateById = (req, res) => {
       householdRegistrationAddress: candidate.household_registration_address
     };
 
-    res.json({
+    res.send({
       code: 200,
       message: '获取候选人详情成功',
       data: formattedCandidate
@@ -278,7 +278,7 @@ exports.createCandidate = (req, res) => {
       householdRegistrationAddress: candidate.household_registration_address
     };
     
-    res.json({
+    res.send({
       code: 200,
       message: '候选人创建成功',
       data: formattedCandidate
@@ -358,59 +358,67 @@ exports.updateCandidate = (req, res) => {
       console.error('更新候选人错误:', err);
       res.status(500).send({
         code: 500,
-        message: `更新候选人时发生错误 id: ${id}`
+        message: "更新候选人时出错"
       });
       return;
     }
 
-    // 格式化返回数据
-    const formattedCandidate = {
-      id: updatedCandidate.id,
-      fundId: updatedCandidate.fund_id,
-      fundPlatform: updatedCandidate.fund_platform || '',
-      name: updatedCandidate.name,
-      position: updatedCandidate.position,
-      phone: updatedCandidate.phone,
-      email: updatedCandidate.email,
-      source: updatedCandidate.source,
-      education: updatedCandidate.education,
-      experience: updatedCandidate.experience,
-      expectedSalary: updatedCandidate.expected_salary,
-      process: updatedCandidate.process,
-      status: updatedCandidate.status,
-      interviewStatus: updatedCandidate.interview_status,
-      statusText: updatedCandidate.status_text || '待约',
-      firstInterviewDate: updatedCandidate.first_interview_date,
-      firstInterviewTime: updatedCandidate.first_interview_time,
-      firstInterviewLocation: updatedCandidate.first_interview_location,
-      firstInterviewNotes: updatedCandidate.first_interview_notes,
-      firstInterviewer: updatedCandidate.first_interviewer || '',
-      firstInterviewResult: updatedCandidate.first_interview_result || '',
-      secondInterviewDate: updatedCandidate.second_interview_date,
-      secondInterviewTime: updatedCandidate.second_interview_time,
-      secondInterviewLocation: updatedCandidate.second_interview_location,
-      secondInterviewNotes: updatedCandidate.second_interview_notes,
-      secondInterviewer: updatedCandidate.second_interviewer || '',
-      secondInterviewResult: updatedCandidate.second_interview_result || '',
-      finalInterviewResult: updatedCandidate.final_interview_result || '',
-      finalEvaluation: updatedCandidate.final_evaluation || '',
-      scheduleRemarks: updatedCandidate.schedule_remarks,
-      createdAt: updatedCandidate.created_at,
-      // 新增个人详细信息字段
-      birthDate: updatedCandidate.birth_date,
-      ethnicity: updatedCandidate.ethnicity,
-      nativePlace: updatedCandidate.native_place, // 籍贯
-      maritalStatus: updatedCandidate.marital_status,
-      currentAddress: updatedCandidate.current_address,
-      idNumber: updatedCandidate.id_number,
-      householdRegistrationAddress: updatedCandidate.household_registration_address // 户口所在地
-    };
+    // 确保返回的updatedCandidate包含所有字段
+    if (updatedCandidate) {
+      // 格式化返回数据
+      const formattedCandidate = {
+        id: updatedCandidate.id,
+        fundId: updatedCandidate.fund_id,
+        fundPlatform: updatedCandidate.fund_platform || '',
+        name: updatedCandidate.name,
+        position: updatedCandidate.position,
+        phone: updatedCandidate.phone,
+        email: updatedCandidate.email,
+        source: updatedCandidate.source,
+        education: updatedCandidate.education,
+        experience: updatedCandidate.experience,
+        expectedSalary: updatedCandidate.expected_salary,
+        process: updatedCandidate.process,
+        status: updatedCandidate.status,
+        interviewStatus: updatedCandidate.interview_status,
+        statusText: updatedCandidate.status_text || '待约',
+        firstInterviewDate: updatedCandidate.first_interview_date,
+        firstInterviewTime: updatedCandidate.first_interview_time,
+        firstInterviewLocation: updatedCandidate.first_interview_location,
+        firstInterviewNotes: updatedCandidate.first_interview_notes,
+        firstInterviewer: updatedCandidate.first_interviewer || '',
+        firstInterviewResult: updatedCandidate.first_interview_result || '',
+        secondInterviewDate: updatedCandidate.second_interview_date,
+        secondInterviewTime: updatedCandidate.second_interview_time,
+        secondInterviewLocation: updatedCandidate.second_interview_location,
+        secondInterviewNotes: updatedCandidate.second_interview_notes,
+        secondInterviewer: updatedCandidate.second_interviewer || '',
+        secondInterviewResult: updatedCandidate.second_interview_result || '',
+        finalInterviewResult: updatedCandidate.final_interview_result || '',
+        finalEvaluation: updatedCandidate.final_evaluation || '',
+        scheduleRemarks: updatedCandidate.schedule_remarks,
+        createdAt: updatedCandidate.created_at,
+        // 新增个人详细信息字段
+        birthDate: updatedCandidate.birth_date,
+        ethnicity: updatedCandidate.ethnicity,
+        nativePlace: updatedCandidate.native_place, // 籍贯
+        maritalStatus: updatedCandidate.marital_status,
+        currentAddress: updatedCandidate.current_address,
+        idNumber: updatedCandidate.id_number,
+        householdRegistrationAddress: updatedCandidate.household_registration_address // 户口所在地
+      };
 
-    res.json({
-      code: 200,
-      message: '候选人更新成功',
-      data: formattedCandidate
-    });
+      res.json({
+        code: 200,
+        message: '候选人更新成功',
+        data: formattedCandidate
+      });
+    } else {
+      res.status(500).send({
+        code: 500,
+        message: "更新候选人后未能获取最新数据"
+      });
+    }
   });
 };
 

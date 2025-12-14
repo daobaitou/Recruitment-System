@@ -134,7 +134,7 @@ class Candidate {
   // 更新候选人
   static updateById(id, candidate, callback) {
     console.log('更新候选人，ID:', id);
-    console.log('更新数据:', JSON.stringify(candidate, null, 2));
+    console.log('更新数据:', candidate);
     
     // 构建动态更新语句
     let sql = "UPDATE candidates SET ";

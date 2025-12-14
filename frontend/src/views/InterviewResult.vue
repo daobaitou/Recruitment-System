@@ -182,26 +182,26 @@ const submitForm = () => {
         // 根据项目规范，面试信息应存储在候选人表中
         // 准备更新候选人的数据
         const candidateUpdateData = {
-          interview_status: 'completed'
+          interviewStatus: 'completed'
         }
         
         // 根据面试轮次更新对应的面试结果字段
         if (form.round === 'first-interview') {
-          candidateUpdateData.first_interview_result = form.feedback
-          candidateUpdateData.first_interviewer = form.interviewer
-          candidateUpdateData.first_interview_date = form.date
-          candidateUpdateData.first_interview_time = form.time
-          candidateUpdateData.first_interview_location = form.location
+          candidateUpdateData.firstInterviewResult = form.feedback
+          candidateUpdateData.firstInterviewer = form.interviewer
+          candidateUpdateData.firstInterviewDate = form.date
+          candidateUpdateData.firstInterviewTime = form.time
+          candidateUpdateData.firstInterviewLocation = form.location
         } else if (form.round === 'second-interview') {
-          candidateUpdateData.second_interview_result = form.feedback
-          candidateUpdateData.second_interviewer = form.interviewer
-          candidateUpdateData.second_interview_date = form.date
-          candidateUpdateData.second_interview_time = form.time
-          candidateUpdateData.second_interview_location = form.location
+          candidateUpdateData.secondInterviewResult = form.feedback
+          candidateUpdateData.secondInterviewer = form.interviewer
+          candidateUpdateData.secondInterviewDate = form.date
+          candidateUpdateData.secondInterviewTime = form.time
+          candidateUpdateData.secondInterviewLocation = form.location
         } else {
           // 对于其他面试轮次，暂时存储在最终面试结果字段中
-          candidateUpdateData.final_interview_result = form.feedback
-          candidateUpdateData.final_evaluation = form.feedback
+          candidateUpdateData.finalInterviewResult = form.feedback
+          candidateUpdateData.finalEvaluation = form.feedback
         }
         
         // 更新候选人信息
@@ -266,8 +266,8 @@ onMounted(async () => {
       form.title = `面试-${candidate.value.name}`
       
       // 预填充已有面试信息
-      form.description = ''
-      form.status = 'completed'
+      form.description = candidate.value.schedule_remarks || ''
+      form.status = candidate.value.interview_status === 'completed' ? 'completed' : 'completed'
       form.rating = 0
     } catch (error) {
       console.error('加载候选人信息失败:', error)

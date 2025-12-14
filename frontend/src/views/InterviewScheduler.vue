@@ -201,27 +201,9 @@ const submitForm = () => {
     if (valid) {
       loading.value = true
       try {
-        // 创建面试记录
-        const interviewData = {
-          candidateId: form.candidateId,
-          title: `${form.round === 'first-interview' ? '一面' : 
-                 form.round === 'second-interview' ? '二面' :
-                 form.round === 'third-interview' ? '三面' :
-                 form.round === 'hr-interview' ? 'HR面' : '终面'}-${candidate.value.name}`,
-          round: form.round,
-          description: form.description,
-          interviewer: form.interviewer,
-          date: form.date, // 保持原始日期格式
-          time: form.time.includes(':') && form.time.split(':').length === 2 ? form.time + ':00' : form.time, // 确保时间格式为 HH:mm:ss
-          location: form.location,
-          status: 'scheduled'
-        }
-        
-        await interviewStore.createInterview(interviewData)
-        
-        // 更新候选人信息
+        // 更新候选人信息，将面试安排信息存储到候选人记录中
         const updateData = {
-          fundId: candidate.value.fundId, // 保留原有的资金来源
+          fundId: candidate.value.fund_id, // 保留原有的资金来源
           name: candidate.value.name,
           position: candidate.value.position,
           process: form.round,
@@ -248,7 +230,7 @@ const submitForm = () => {
         ElMessage.success('面试安排成功')
         router.push({ 
           name: 'CandidateDetail', 
-          query: { candidateId: form.candidateId } 
+          params: { id: form.candidateId } 
         })
       } catch (error) {
         console.error('安排面试失败:', error)

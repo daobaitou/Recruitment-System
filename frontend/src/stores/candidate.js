@@ -108,7 +108,7 @@ export const useCandidateStore = defineStore('candidate', () => {
       
       return response.data
     } catch (error) {
-      ElMessage.error('更新候选人失败')
+      ElMessage.error('更新候选人失败: ' + (error.response?.data?.message || error.message))
       throw error
     }
   }
