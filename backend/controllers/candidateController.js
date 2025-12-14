@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 
 // 获取所有候选人列表
 exports.getAllCandidates = (req, res) => {
+  console.log('收到获取所有候选人列表请求');
   Candidate.getAll((err, candidates) => {
     if (err) {
       console.error('获取候选人列表错误:', err);
@@ -45,7 +46,15 @@ exports.getAllCandidates = (req, res) => {
       finalInterviewResult: candidate.final_interview_result || '',
       finalEvaluation: candidate.final_evaluation || '',
       scheduleRemarks: candidate.schedule_remarks,
-      createdAt: candidate.created_at
+      createdAt: candidate.created_at,
+      // 新增个人详细信息字段
+      birthDate: candidate.birth_date,
+      ethnicity: candidate.ethnicity,
+      nativePlace: candidate.native_place,
+      maritalStatus: candidate.marital_status,
+      currentAddress: candidate.current_address,
+      idNumber: candidate.id_number,
+      householdRegistrationAddress: candidate.household_registration_address
     }));
 
     res.json({
@@ -59,10 +68,12 @@ exports.getAllCandidates = (req, res) => {
 // 根据ID获取候选人详情
 exports.getCandidateById = (req, res) => {
   const { id } = req.params;
+  console.log('收到获取候选人详情请求，ID:', id);
   
   Candidate.findById(id, (err, candidate) => {
     if (err) {
       if (err.kind === "not_found") {
+        console.log('未找到候选人，ID:', id);
         res.status(404).send({
           code: 404,
           message: `未找到ID为${id}的候选人`
@@ -77,7 +88,8 @@ exports.getCandidateById = (req, res) => {
       });
       return;
     }
-
+    
+    console.log('获取候选人详情成功，返回数据:', JSON.stringify(candidate, null, 2));
     const formattedCandidate = {
       id: candidate.id,
       fundId: candidate.fund_id || null,
@@ -109,7 +121,15 @@ exports.getCandidateById = (req, res) => {
       finalInterviewResult: candidate.final_interview_result || '',
       finalEvaluation: candidate.final_evaluation || '',
       scheduleRemarks: candidate.schedule_remarks,
-      createdAt: candidate.created_at
+      createdAt: candidate.created_at,
+      // 新增个人详细信息字段
+      birthDate: candidate.birth_date,
+      ethnicity: candidate.ethnicity,
+      nativePlace: candidate.native_place,
+      maritalStatus: candidate.marital_status,
+      currentAddress: candidate.current_address,
+      idNumber: candidate.id_number,
+      householdRegistrationAddress: candidate.household_registration_address
     };
 
     res.json({
@@ -122,6 +142,7 @@ exports.getCandidateById = (req, res) => {
 
 // 创建候选人
 exports.createCandidate = (req, res) => {
+  console.log('收到创建候选人请求，请求体:', JSON.stringify(req.body, null, 2));
   // 从请求体中提取参数
   const {
     fundId,
@@ -141,15 +162,25 @@ exports.createCandidate = (req, res) => {
     firstInterviewLocation,
     firstInterviewNotes,
     firstInterviewer, // 新增字段
+    firstInterviewResult, // 新增字段
     secondInterviewDate,
     secondInterviewTime,
     secondInterviewLocation,
     secondInterviewNotes,
     secondInterviewer, // 新增字段
-    scheduleRemarks
+    secondInterviewResult, // 新增字段
+    finalInterviewResult, // 新增字段
+    finalEvaluation, // 新增字段
+    scheduleRemarks,
+    // 新增个人详细信息字段
+    birthDate,
+    ethnicity,
+    nativePlace,
+    maritalStatus,
+    currentAddress,
+    idNumber,
+    householdRegistrationAddress
   } = req.body;
-  
-  console.log('收到创建候选人请求:', req.body);
 
   // 验证必填字段
   if (!name || !position) {
@@ -175,14 +206,23 @@ exports.createCandidate = (req, res) => {
     status: 'pending',
     interview_status: interviewStatus || 'pending', // 默认为待约状态
     first_interviewer: firstInterviewer || '',
-    second_interviewer: secondInterviewer || '',
     first_interview_result: firstInterviewResult || '',
+    second_interviewer: secondInterviewer || '',
     second_interview_result: secondInterviewResult || '',
     final_interview_result: finalInterviewResult || '',
-    final_evaluation: finalEvaluation || ''
+    final_evaluation: finalEvaluation || '',
+    // 新增个人详细信息字段
+    birth_date: birthDate || null,
+    ethnicity: ethnicity || '',
+    native_place: nativePlace || '',
+    marital_status: maritalStatus || '',
+    current_address: currentAddress || '',
+    id_number: idNumber || '',
+    household_registration_address: householdRegistrationAddress || ''
   };
   
   console.log('准备创建候选人对象:', newCandidate);
+    console.log('请求体内容:', req.body);
 
   // 保存候选人到数据库
   Candidate.create(newCandidate, (err, candidate) => {
@@ -217,13 +257,25 @@ exports.createCandidate = (req, res) => {
       firstInterviewLocation: candidate.first_interview_location,
       firstInterviewNotes: candidate.first_interview_notes,
       firstInterviewer: candidate.first_interviewer || '',
+      firstInterviewResult: candidate.first_interview_result || '',
       secondInterviewDate: candidate.second_interview_date,
       secondInterviewTime: candidate.second_interview_time,
       secondInterviewLocation: candidate.second_interview_location,
       secondInterviewNotes: candidate.second_interview_notes,
       secondInterviewer: candidate.second_interviewer || '',
+      secondInterviewResult: candidate.second_interview_result || '',
+      finalInterviewResult: candidate.final_interview_result || '',
+      finalEvaluation: candidate.final_evaluation || '',
       scheduleRemarks: candidate.schedule_remarks,
-      createdAt: candidate.created_at
+      createdAt: candidate.created_at,
+      // 新增个人详细信息字段
+      birthDate: candidate.birth_date,
+      ethnicity: candidate.ethnicity,
+      nativePlace: candidate.native_place,
+      maritalStatus: candidate.marital_status,
+      currentAddress: candidate.current_address,
+      idNumber: candidate.id_number,
+      householdRegistrationAddress: candidate.household_registration_address
     };
     
     res.json({
@@ -241,7 +293,10 @@ exports.updateCandidate = (req, res) => {
     firstInterviewDate, firstInterviewTime, firstInterviewLocation, firstInterviewNotes, firstInterviewer, firstInterviewResult,
     secondInterviewDate, secondInterviewTime, secondInterviewLocation, secondInterviewNotes, secondInterviewer, secondInterviewResult,
     finalInterviewResult, finalEvaluation,
-    scheduleRemarks } = req.body;
+    scheduleRemarks,
+    // 新增个人详细信息字段
+    birthDate, ethnicity, nativePlace, maritalStatus, currentAddress, idNumber, householdRegistrationAddress
+  } = req.body;
 
   // 创建候选人对象（只包含实际提供的字段）
   const candidate = {};
@@ -250,32 +305,40 @@ exports.updateCandidate = (req, res) => {
   if (req.body.hasOwnProperty('fundId')) {
     candidate.fund_id = fundId !== undefined ? fundId : null;
   }
-  if (name !== undefined) candidate.name = name;
-  if (position !== undefined) candidate.position = position;
-  if (phone !== undefined) candidate.phone = phone;
-  if (email !== undefined) candidate.email = email;
-  if (source !== undefined) candidate.source = source;
-  if (education !== undefined) candidate.education = education;
-  if (experience !== undefined) candidate.experience = experience;
-  if (expectedSalary !== undefined) candidate.expected_salary = expectedSalary;
-  if (process !== undefined) candidate.process = process;
-  if (status !== undefined) candidate.status = status;
-  if (interviewStatus !== undefined) candidate.interview_status = interviewStatus;
-  if (firstInterviewDate !== undefined) candidate.first_interview_date = firstInterviewDate;
-  if (firstInterviewTime !== undefined) candidate.first_interview_time = firstInterviewTime;
-  if (firstInterviewLocation !== undefined) candidate.first_interview_location = firstInterviewLocation;
-  if (firstInterviewNotes !== undefined) candidate.first_interview_notes = firstInterviewNotes;
-  if (firstInterviewer !== undefined) candidate.first_interviewer = firstInterviewer;
-  if (firstInterviewResult !== undefined) candidate.first_interview_result = firstInterviewResult;
-  if (secondInterviewDate !== undefined) candidate.second_interview_date = secondInterviewDate;
-  if (secondInterviewTime !== undefined) candidate.second_interview_time = secondInterviewTime;
-  if (secondInterviewLocation !== undefined) candidate.second_interview_location = secondInterviewLocation;
-  if (secondInterviewNotes !== undefined) candidate.second_interview_notes = secondInterviewNotes;
-  if (secondInterviewer !== undefined) candidate.second_interviewer = secondInterviewer;
-  if (secondInterviewResult !== undefined) candidate.second_interview_result = secondInterviewResult;
-  if (finalInterviewResult !== undefined) candidate.final_interview_result = finalInterviewResult;
-  if (finalEvaluation !== undefined) candidate.final_evaluation = finalEvaluation;
-  if (scheduleRemarks !== undefined) candidate.schedule_remarks = scheduleRemarks;
+  if (req.body.hasOwnProperty('name') && name !== undefined) candidate.name = name;
+  if (req.body.hasOwnProperty('position') && position !== undefined) candidate.position = position;
+  if (req.body.hasOwnProperty('phone') && phone !== undefined) candidate.phone = phone;
+  if (req.body.hasOwnProperty('email') && email !== undefined) candidate.email = email;
+  if (req.body.hasOwnProperty('source') && source !== undefined) candidate.source = source;
+  if (req.body.hasOwnProperty('education') && education !== undefined) candidate.education = education;
+  if (req.body.hasOwnProperty('experience') && experience !== undefined) candidate.experience = experience;
+  if (req.body.hasOwnProperty('expectedSalary') && expectedSalary !== undefined) candidate.expected_salary = expectedSalary;
+  if (req.body.hasOwnProperty('process') && process !== undefined) candidate.process = process;
+  if (req.body.hasOwnProperty('status') && status !== undefined) candidate.status = status;
+  if (req.body.hasOwnProperty('interviewStatus') && interviewStatus !== undefined) candidate.interview_status = interviewStatus;
+  if (req.body.hasOwnProperty('firstInterviewDate') && firstInterviewDate !== undefined) candidate.first_interview_date = firstInterviewDate;
+  if (req.body.hasOwnProperty('firstInterviewTime') && firstInterviewTime !== undefined) candidate.first_interview_time = firstInterviewTime;
+  if (req.body.hasOwnProperty('firstInterviewLocation') && firstInterviewLocation !== undefined) candidate.first_interview_location = firstInterviewLocation;
+  if (req.body.hasOwnProperty('firstInterviewNotes') && firstInterviewNotes !== undefined) candidate.first_interview_notes = firstInterviewNotes;
+  if (req.body.hasOwnProperty('firstInterviewer') && firstInterviewer !== undefined) candidate.first_interviewer = firstInterviewer;
+  if (req.body.hasOwnProperty('firstInterviewResult') && firstInterviewResult !== undefined) candidate.first_interview_result = firstInterviewResult;
+  if (req.body.hasOwnProperty('secondInterviewDate') && secondInterviewDate !== undefined) candidate.second_interview_date = secondInterviewDate;
+  if (req.body.hasOwnProperty('secondInterviewTime') && secondInterviewTime !== undefined) candidate.second_interview_time = secondInterviewTime;
+  if (req.body.hasOwnProperty('secondInterviewLocation') && secondInterviewLocation !== undefined) candidate.second_interview_location = secondInterviewLocation;
+  if (req.body.hasOwnProperty('secondInterviewNotes') && secondInterviewNotes !== undefined) candidate.second_interview_notes = secondInterviewNotes;
+  if (req.body.hasOwnProperty('secondInterviewer') && secondInterviewer !== undefined) candidate.second_interviewer = secondInterviewer;
+  if (req.body.hasOwnProperty('secondInterviewResult') && secondInterviewResult !== undefined) candidate.second_interview_result = secondInterviewResult;
+  if (req.body.hasOwnProperty('finalInterviewResult') && finalInterviewResult !== undefined) candidate.final_interview_result = finalInterviewResult;
+  if (req.body.hasOwnProperty('finalEvaluation') && finalEvaluation !== undefined) candidate.final_evaluation = finalEvaluation;
+  if (req.body.hasOwnProperty('scheduleRemarks') && scheduleRemarks !== undefined) candidate.schedule_remarks = scheduleRemarks;
+  // 新增个人详细信息字段
+  if (req.body.hasOwnProperty('birthDate') && birthDate !== undefined) candidate.birth_date = birthDate;
+  if (req.body.hasOwnProperty('ethnicity') && ethnicity !== undefined) candidate.ethnicity = ethnicity;
+  if (req.body.hasOwnProperty('nativePlace') && nativePlace !== undefined) candidate.native_place = nativePlace;
+  if (req.body.hasOwnProperty('maritalStatus') && maritalStatus !== undefined) candidate.marital_status = maritalStatus;
+  if (req.body.hasOwnProperty('currentAddress') && currentAddress !== undefined) candidate.current_address = currentAddress;
+  if (req.body.hasOwnProperty('idNumber') && idNumber !== undefined) candidate.id_number = idNumber;
+  if (req.body.hasOwnProperty('householdRegistrationAddress') && householdRegistrationAddress !== undefined) candidate.household_registration_address = householdRegistrationAddress;
   
   // 确保必填字段有默认值
   if (candidate.status === undefined) candidate.status = 'pending';
@@ -332,9 +395,17 @@ exports.updateCandidate = (req, res) => {
       finalInterviewResult: updatedCandidate.final_interview_result || '',
       finalEvaluation: updatedCandidate.final_evaluation || '',
       scheduleRemarks: updatedCandidate.schedule_remarks,
-      createdAt: updatedCandidate.created_at
+      createdAt: updatedCandidate.created_at,
+      // 新增个人详细信息字段
+      birthDate: updatedCandidate.birth_date,
+      ethnicity: updatedCandidate.ethnicity,
+      nativePlace: updatedCandidate.native_place, // 籍贯
+      maritalStatus: updatedCandidate.marital_status,
+      currentAddress: updatedCandidate.current_address,
+      idNumber: updatedCandidate.id_number,
+      householdRegistrationAddress: updatedCandidate.household_registration_address // 户口所在地
     };
-    
+
     res.json({
       code: 200,
       message: '候选人更新成功',
@@ -346,6 +417,7 @@ exports.updateCandidate = (req, res) => {
 // 删除候选人
 exports.deleteCandidate = (req, res) => {
   const { id } = req.params;
+  console.log('收到删除候选人请求，ID:', id);
   
   Candidate.remove(id, (err, result) => {
     if (err) {

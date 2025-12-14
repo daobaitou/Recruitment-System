@@ -31,6 +31,14 @@ class Candidate {
     this.final_evaluation = candidate.final_evaluation; // 新增字段
     this.schedule_remarks = candidate.schedule_remarks;
     this.created_at = candidate.created_at;
+    // 添加个人详细信息字段
+    this.birth_date = candidate.birth_date;
+    this.ethnicity = candidate.ethnicity;
+    this.native_place = candidate.native_place;
+    this.marital_status = candidate.marital_status;
+    this.current_address = candidate.current_address;
+    this.id_number = candidate.id_number;
+    this.household_registration_address = candidate.household_registration_address;
   }
 
   // 创建候选人
@@ -125,6 +133,9 @@ class Candidate {
 
   // 更新候选人
   static updateById(id, candidate, callback) {
+    console.log('更新候选人，ID:', id);
+    console.log('更新数据:', JSON.stringify(candidate, null, 2));
+    
     // 构建动态更新语句
     let sql = "UPDATE candidates SET ";
     const fields = [];
@@ -140,7 +151,9 @@ class Candidate {
     
     // 如果没有字段需要更新，则直接返回成功
     if (fields.length === 0) {
-      callback(null, { id: id, ...candidate });
+      console.log('没有字段需要更新，直接获取候选人数据');
+      // 直接从数据库获取最新数据
+      this.findById(id, callback);
       return;
     }
     
@@ -148,16 +161,24 @@ class Candidate {
     sql += " WHERE id = ?";
     values.push(id);
     
+    console.log('执行SQL:', sql);
+    console.log('参数:', values);
+    
     db.query(sql, values)
       .then(([res]) => {
+        console.log('更新结果:', res);
         if (res.affectedRows == 0) {
+          console.log('未找到要更新的候选人，ID:', id);
           callback({ kind: "not_found" }, null);
           return;
         }
 
-        callback(null, { id: id, ...candidate });
+        console.log('更新成功，获取最新数据');
+        // 更新成功后，从数据库获取最新的数据
+        this.findById(id, callback);
       })
       .catch(err => {
+        console.error('更新候选人时发生错误:', err);
         callback(err, null);
       });
   }
@@ -178,7 +199,7 @@ class Candidate {
       });
   }
 
-  // 删除指定资金下的所有候选人
+  // 删除指定基金下的所有候选人
   static removeByFundId(fundId, callback) {
     db.query("DELETE FROM candidates WHERE fund_id = ?", fundId)
       .then(([res]) => {

@@ -52,12 +52,16 @@
             <el-descriptions-item label="学历">{{ candidate.education }}</el-descriptions-item>
             <el-descriptions-item label="工作经验">{{ candidate.experience }}</el-descriptions-item>
             <el-descriptions-item label="期望薪资">{{ candidate.expectedSalary }}</el-descriptions-item>
-            <el-descriptions-item label="一面面试官">{{ candidate.firstInterviewer || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="一面结果">{{ candidate.firstInterviewResult || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="二面面试官">{{ candidate.secondInterviewer || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="二面结果">{{ candidate.secondInterviewResult || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="最终面试结果">{{ candidate.finalInterviewResult || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="最终评价">{{ candidate.finalEvaluation || '-' }}</el-descriptions-item>
+          </el-descriptions>
+          
+          <el-descriptions title="个人详细信息" :column="1" border class="personal-info">
+            <el-descriptions-item label="出生日期">{{ candidate.birthDate || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="民族">{{ candidate.ethnicity || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="籍贯">{{ candidate.nativePlace || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="婚姻状态">{{ candidate.maritalStatus || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="现住址">{{ candidate.currentAddress || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="身份证号码">{{ candidate.idNumber || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="户口所在地">{{ candidate.householdRegistrationAddress || '-' }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
         
@@ -152,42 +156,116 @@
     </el-card>
     
     <!-- 编辑候选人对话框 -->
-    <el-dialog v-model="dialogVisible" title="编辑候选人" width="500px">
+    <el-dialog v-model="dialogVisible" title="编辑候选人" width="800px" class="candidate-edit-dialog">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-form-item label="资金来源" prop="fundId">
-          <el-select v-model="form.fundId" placeholder="请选择资金来源" style="width: 100%">
-            <el-option
-              v-for="fund in funds"
-              :key="fund.id"
-              :label="fund.platform"
-              :value="fund.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="姓名" prop="name">
-          <el-input v-model="form.name" />
-        </el-form-item>
-        <el-form-item label="应聘职位" prop="position">
-          <el-input v-model="form.position" />
-        </el-form-item>
-        <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="form.phone" />
-        </el-form-item>
-        <el-form-item label="邮箱地址">
-          <el-input v-model="form.email" />
-        </el-form-item>
-        <el-form-item label="简历来源">
-          <el-input v-model="form.source" />
-        </el-form-item>
-        <el-form-item label="学历">
-          <el-input v-model="form.education" />
-        </el-form-item>
-        <el-form-item label="工作经验">
-          <el-input v-model="form.experience" />
-        </el-form-item>
-        <el-form-item label="期望薪资">
-          <el-input v-model="form.expectedSalary" />
-        </el-form-item>
+        <el-tabs v-model="activeTab" class="candidate-edit-tabs">
+          <el-tab-pane label="基本信息" name="basic">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="资金来源" prop="fundId">
+                  <el-select v-model="form.fundId" placeholder="请选择资金来源" style="width: 100%">
+                    <el-option
+                      v-for="fund in funds"
+                      :key="fund.id"
+                      :label="fund.platform"
+                      :value="fund.id"
+                    ></el-option>
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="姓名" prop="name">
+                  <el-input v-model="form.name" />
+                </el-form-item>
+                <el-form-item label="应聘职位" prop="position">
+                  <el-input v-model="form.position" />
+                </el-form-item>
+                <el-form-item label="联系电话" prop="phone">
+                  <el-input v-model="form.phone" />
+                </el-form-item>
+                <el-form-item label="邮箱地址">
+                  <el-input v-model="form.email" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="简历来源">
+                  <el-input v-model="form.source" />
+                </el-form-item>
+                <el-form-item label="学历">
+                  <el-input v-model="form.education" />
+                </el-form-item>
+                <el-form-item label="工作经验">
+                  <el-input v-model="form.experience" />
+                </el-form-item>
+                <el-form-item label="期望薪资">
+                  <el-input v-model="form.expectedSalary" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+          
+          <el-tab-pane label="个人详细信息" name="personal">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="出生日期">
+                  <el-date-picker
+                    v-model="form.birthDate"
+                    type="date"
+                    placeholder="选择出生日期"
+                    style="width: 100%"
+                    value-format="YYYY-MM-DD"
+                  />
+                </el-form-item>
+                <el-form-item label="民族">
+                  <el-input v-model="form.ethnicity" />
+                </el-form-item>
+                <el-form-item label="籍贯">
+                  <el-input v-model="form.nativePlace" />
+                </el-form-item>
+                <el-form-item label="婚姻状态">
+                  <el-select v-model="form.maritalStatus" placeholder="请选择婚姻状态" style="width: 100%">
+                    <el-option label="未婚" value="未婚"></el-option>
+                    <el-option label="已婚" value="已婚"></el-option>
+                    <el-option label="离异" value="离异"></el-option>
+                    <el-option label="丧偶" value="丧偶"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="现住址">
+                  <el-input 
+                    v-model="form.currentAddress" 
+                    type="textarea"
+                    :rows="3"
+                  />
+                </el-form-item>
+                <el-form-item label="身份证号码">
+                  <el-input v-model="form.idNumber" />
+                </el-form-item>
+                <el-form-item label="户口所在地">
+                  <el-input 
+                    v-model="form.householdRegistrationAddress" 
+                    type="textarea"
+                    :rows="3"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+          
+          <el-tab-pane label="资金信息" name="fund">
+            <el-alert
+              title="资金信息由系统自动关联，此处仅显示相关信息"
+              type="info"
+              show-icon
+              :closable="false"
+            />
+            <el-descriptions :column="1" border style="margin-top: 20px;">
+              <el-descriptions-item label="资金来源">{{ selectedFund?.platform || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="招聘岗位">{{ selectedFund?.position || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="薪资范围">{{ selectedFund?.salaryRange || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="充值人">{{ selectedFund?.rechargeByName || '-' }}</el-descriptions-item>
+            </el-descriptions>
+          </el-tab-pane>
+        </el-tabs>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -214,6 +292,7 @@ const fundStore = useFundStore()
 const dialogVisible = ref(false)
 const loading = ref(false)
 const interviewRecords = ref([])
+const activeTab = ref('basic') // 添加标签页控制
 
 const formRef = ref()
 
@@ -235,6 +314,12 @@ const rules = {
   phone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }]
 }
 
+// 计算属性：根据选中的资金ID获取资金信息
+const selectedFund = computed(() => {
+  if (!form.fundId || !funds.value) return null
+  return funds.value.find(fund => fund.id === form.fundId) || null
+})
+
 // 返回上一页
 const goBack = () => {
   router.go(-1)
@@ -243,7 +328,27 @@ const goBack = () => {
 // 处理编辑
 const handleEdit = () => {
   if (candidate.value) {
-    Object.assign(form, candidate.value)
+    // 初始化表单数据
+    Object.assign(form, {
+      id: candidate.value.id,
+      fundId: candidate.value.fundId,
+      name: candidate.value.name,
+      position: candidate.value.position,
+      phone: candidate.value.phone,
+      email: candidate.value.email,
+      source: candidate.value.source,
+      education: candidate.value.education,
+      experience: candidate.value.experience,
+      expectedSalary: candidate.value.expectedSalary,
+      // 个人详细信息
+      birthDate: candidate.value.birthDate,
+      ethnicity: candidate.value.ethnicity,
+      nativePlace: candidate.value.nativePlace, // 籍贯
+      maritalStatus: candidate.value.maritalStatus,
+      currentAddress: candidate.value.currentAddress,
+      idNumber: candidate.value.idNumber,
+      householdRegistrationAddress: candidate.value.householdRegistrationAddress // 户口所在地
+    })
     dialogVisible.value = true
   }
 }
@@ -280,6 +385,7 @@ const handleScheduleInterview = () => {
 // 处理面试结果
 const handleProcessInterview = () => {
   // 跳转到面试结果处理页面
+  // 根据项目规范，应传递候选人ID而不是面试ID
   router.push({ 
     name: 'InterviewResult', 
     params: { id: candidate.value.id } 
@@ -408,7 +514,7 @@ const funds = computed(() => fundStore.funds)
 
 const form = reactive({
   id: undefined,
-  fund_id: '',
+  fundId: '',
   name: '',
   position: '',
   phone: '',
@@ -416,10 +522,18 @@ const form = reactive({
   source: '',
   education: '',
   experience: '',
-  expected_salary: '',
+  expectedSalary: '',
   process: 'invite',
   status: 'pending',
-  interview_status: 'pending'
+  interviewStatus: 'pending',
+  // 个人详细信息
+  birthDate: '',
+  ethnicity: '',
+  nativePlace: '', // 籍贯
+  maritalStatus: '',
+  currentAddress: '',
+  idNumber: '',
+  householdRegistrationAddress: '' // 户口所在地
 })
 
 // 加载面试记录
@@ -493,14 +607,39 @@ const submitForm = () => {
     if (valid) {
       if (form.id) {
         // 编辑候选人
-        const index = candidateStore.candidates.findIndex(c => c.id === form.id)
-        if (index !== -1) {
-          candidateStore.candidates[index] = { ...form }
-          candidateStore.setCurrentCandidate({ ...form })
+        const candidateData = {
+          fund_id: form.fundId,
+          name: form.name,
+          position: form.position,
+          phone: form.phone,
+          email: form.email,
+          source: form.source,
+          education: form.education,
+          experience: form.experience,
+          expected_salary: form.expectedSalary,
+          // 个人详细信息
+          birth_date: form.birthDate,
+          ethnicity: form.ethnicity,
+          native_place: form.nativePlace, // 籍贯
+          marital_status: form.maritalStatus,
+          current_address: form.currentAddress,
+          id_number: form.idNumber,
+          household_registration_address: form.householdRegistrationAddress // 户口所在地
         }
-        ElMessage.success('编辑成功')
+        
+        candidateStore.updateCandidate(form.id, candidateData)
+          .then(() => {
+            ElMessage.success('编辑成功')
+            dialogVisible.value = false
+            // 重新加载候选人详情
+            candidateStore.fetchCandidateById(form.id)
+            loadInterviewRecords()
+          })
+          .catch(error => {
+            console.error('编辑候选人失败:', error)
+            ElMessage.error('编辑失败')
+          })
       }
-      dialogVisible.value = false
     }
   })
 }
@@ -624,11 +763,31 @@ onMounted(async () => {
   margin-top: 20px;
 }
 
+.personal-info {
+  margin-top: 20px;
+}
+
 .candidate-notes {
   margin-top: 20px;
 }
 
 .candidate-notes h4 {
   margin-bottom: 10px;
+}
+
+.candidate-edit-dialog .el-dialog__body {
+  padding: 10px 20px 0 20px;
+}
+
+.candidate-edit-tabs {
+  min-height: 300px;
+}
+
+.candidate-edit-tabs .el-tab-pane {
+  padding: 20px 0;
+}
+
+.candidate-edit-tabs .el-form-item {
+  margin-bottom: 20px;
 }
 </style>

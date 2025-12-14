@@ -87,26 +87,27 @@ export const useCandidateStore = defineStore('candidate', () => {
       ElMessage.error('添加候选人失败')
       throw error
     }
-  }
+  };
 
   // 更新候选人
   async function updateCandidate(id, candidateData) {
     try {
-      console.log('正在更新候选人:', id, candidateData)
       const response = await candidateApi.updateCandidate(id, candidateData)
-      const updatedCandidate = response.data
-      const index = candidates.value.findIndex(item => item.id == id)
+      
+      // 更新本地状态
+      const index = candidates.value.findIndex(c => c.id === id)
       if (index !== -1) {
-        candidates.value[index] = updatedCandidate
+        // 保持原有的对象引用，只更新属性
+        Object.assign(candidates.value[index], response.data)
       }
-      if (currentCandidate.value && currentCandidate.value.id == id) {
-        currentCandidate.value = updatedCandidate
+      
+      // 如果当前查看的候选人就是被更新的候选人，则也更新当前候选人
+      if (currentCandidate.value && currentCandidate.value.id === id) {
+        Object.assign(currentCandidate.value, response.data)
       }
-      console.log('成功更新候选人:', updatedCandidate)
-      ElMessage.success('成功更新候选人')
-      return updatedCandidate
+      
+      return response.data
     } catch (error) {
-      console.error('更新候选人失败:', error)
       ElMessage.error('更新候选人失败')
       throw error
     }

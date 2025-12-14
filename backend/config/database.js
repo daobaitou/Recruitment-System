@@ -90,6 +90,14 @@ async function initializeDatabase() {
         second_interview_location VARCHAR(255),
         second_interview_notes TEXT,
         schedule_remarks TEXT,
+        // 添加候选人详细信息字段
+        birth_date DATE NULL,
+        ethnicity VARCHAR(50) NULL,
+        native_place VARCHAR(100) NULL,
+        marital_status VARCHAR(20) NULL,
+        current_address TEXT NULL,
+        id_number VARCHAR(18) NULL,
+        household_registration_address TEXT NULL,
         FOREIGN KEY (fund_id) REFERENCES funds(id) ON DELETE SET NULL
       )
     `);
@@ -155,6 +163,94 @@ async function initializeDatabase() {
         console.error('Error adding final_evaluation column:', error);
       }
     }
+    
+    // 检查并添加出生日期字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN birth_date DATE NULL");
+      console.log('Added birth_date column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding birth_date column:', error);
+      }
+    }
+    
+    // 检查并添加民族字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN ethnicity VARCHAR(50) NULL");
+      console.log('Added ethnicity column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding ethnicity column:', error);
+      }
+    }
+    
+    // 检查并添加籍贯字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN native_place VARCHAR(100) NULL");
+      console.log('Added native_place column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding native_place column:', error);
+      }
+    }
+    
+    // 检查并添加婚姻状态字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN marital_status VARCHAR(20) NULL");
+      console.log('Added marital_status column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding marital_status column:', error);
+      }
+    }
+    
+    // 检查并添加现住址字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN current_address TEXT NULL");
+      console.log('Added current_address column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding current_address column:', error);
+      }
+    }
+    
+    // 检查并添加身份证号码字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN id_number VARCHAR(18) NULL");
+      console.log('Added id_number column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding id_number column:', error);
+      }
+    }
+    
+    // 检查并添加户口所在地字段
+    try {
+      await db.query("ALTER TABLE candidates ADD COLUMN household_registration_address TEXT NULL");
+      console.log('Added household_registration_address column to candidates table');
+    } catch (error) {
+      if (error.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding household_registration_address column:', error);
+      }
+    }
+    
+    // 创建工作经历表
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS work_experiences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        candidate_id INT NOT NULL,
+        start_date DATE NULL,
+        end_date DATE NULL,
+        company_name VARCHAR(255) NOT NULL,
+        position VARCHAR(100) NOT NULL,
+        salary VARCHAR(50) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE
+      )
+    `);
+    
+    console.log('Work experiences table is ready');
     
     // 创建面试表
     await db.query(`
