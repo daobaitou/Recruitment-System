@@ -91,6 +91,35 @@
             ></el-option>
           </el-select>
         </el-form-item>
+        
+        <el-form-item label="自动判定结果" v-if="form.status === 'completed'">
+          <el-switch
+            v-model="form.autoJudge"
+            active-text="开启后将根据评分自动判定通过或拒绝"
+          />
+        </el-form-item>
+        
+        <!-- 添加通过和拒绝按钮 -->
+        <el-form-item label="结果" v-if="form.status === 'completed' && !form.autoJudge">
+          <el-button 
+            type="success" 
+            :plain="form.manualStatus !== 'passed'"
+            @click="setManualStatus('passed')"
+            style="margin-right: 10px;"
+          >
+            通过
+          </el-button>
+          <el-button 
+            type="danger" 
+            :plain="form.manualStatus !== 'rejected'"
+            @click="setManualStatus('rejected')"
+          >
+            拒绝
+          </el-button>
+          <div v-if="form.manualStatus" class="manual-status-display">
+            当前选择: {{ form.manualStatus === 'passed' ? '通过' : '拒绝' }}
+          </div>
+        </el-form-item>
       </el-form>
       
       <div class="form-footer">
@@ -128,7 +157,9 @@ const form = reactive({
   location: '',
   status: 'completed',
   feedback: '',
-  rating: 0
+  rating: 0,
+  autoJudge: true, // 默认开启自动判定
+  manualStatus: '' // 手动选择的状态
 })
 
 const interviewRounds = ref([
@@ -173,6 +204,11 @@ const goBack = () => {
   router.push({ name: 'CandidateDetail', params: { id: route.params.id } })
 }
 
+// 设置手动状态
+const setManualStatus = (status) => {
+  form.manualStatus = status
+}
+
 // 提交表单
 const submitForm = () => {
   formRef.value.validate(async (valid) => {
@@ -192,16 +228,46 @@ const submitForm = () => {
           candidateUpdateData.firstInterviewDate = form.date
           candidateUpdateData.firstInterviewTime = form.time
           candidateUpdateData.firstInterviewLocation = form.location
+          // 根据面试结果自动设置通过或拒绝状态
+          if (form.status === 'completed') {
+            if (form.autoJudge) {
+              // 根据评分来判断是否通过（3星及以上为通过）
+              candidateUpdateData.status = form.rating >= 3 ? 'passed' : 'rejected'
+            } else if (form.manualStatus) {
+              // 使用手动选择的状态
+              candidateUpdateData.status = form.manualStatus
+            }
+          }
         } else if (form.round === 'second-interview') {
           candidateUpdateData.secondInterviewResult = form.feedback
           candidateUpdateData.secondInterviewer = form.interviewer
           candidateUpdateData.secondInterviewDate = form.date
           candidateUpdateData.secondInterviewTime = form.time
           candidateUpdateData.secondInterviewLocation = form.location
+          // 根据面试结果自动设置通过或拒绝状态
+          if (form.status === 'completed') {
+            if (form.autoJudge) {
+              // 根据评分来判断是否通过（3星及以上为通过）
+              candidateUpdateData.status = form.rating >= 3 ? 'passed' : 'rejected'
+            } else if (form.manualStatus) {
+              // 使用手动选择的状态
+              candidateUpdateData.status = form.manualStatus
+            }
+          }
         } else {
           // 对于其他面试轮次，暂时存储在最终面试结果字段中
           candidateUpdateData.finalInterviewResult = form.feedback
           candidateUpdateData.finalEvaluation = form.feedback
+          // 根据面试结果自动设置通过或拒绝状态
+          if (form.status === 'completed') {
+            if (form.autoJudge) {
+              // 根据评分来判断是否通过（3星及以上为通过）
+              candidateUpdateData.status = form.rating >= 3 ? 'passed' : 'rejected'
+            } else if (form.manualStatus) {
+              // 使用手动选择的状态
+              candidateUpdateData.status = form.manualStatus
+            }
+          }
         }
         
         // 更新候选人信息
@@ -303,5 +369,11 @@ onMounted(async () => {
   justify-content: center;
   gap: 20px;
   margin-top: 30px;
+}
+
+.manual-status-display {
+  margin-top: 10px;
+  font-weight: bold;
+  color: #409eff;
 }
 </style>
